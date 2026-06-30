@@ -210,7 +210,7 @@ func connectRouter(ip, password string) *RouterClient {
 		}
 	}
 	if ip == "" {
-		guess := "192.168.1.1"
+		guess := "192.168.0.1"
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, "config error: no IP set\n")
 			os.Exit(1)
