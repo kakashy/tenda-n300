@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -26,8 +25,6 @@ func isTendaRouter(ip string) bool {
 }
 
 func defaultGatewayIP() (string, error) {
-	// Linux: parse /proc/net/route
-	// Works on most Linux systems without external commands
 	interfaces := []net.IP{}
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -49,33 +46,10 @@ func defaultGatewayIP() (string, error) {
 	if len(interfaces) == 0 {
 		return "", fmt.Errorf("no network interfaces found")
 	}
-	// Use first non-loopback IPv4 address; gateway is typically .1
-	ip := interfaces[0].To4()
+	ip := make(net.IP, 4)
+	copy(ip, interfaces[0].To4())
 	ip[3] = 1
 	return ip.String(), nil
-}
-
-func gatewayFromRoute() (string, error) {
-	// Linux /proc/net/route approach
-	data, err := os.ReadFile("/proc/net/route")
-	if err != nil {
-		return "", err
-	}
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-		if fields[1] == "00000000" { // Destination 0.0.0.0
-			// Gateway is in hex, little-endian
-			gw := parseHexIP(fields[2])
-			if gw != nil {
-				return gw.String(), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("no default gateway found")
 }
 
 func parseHexIP(hex string) net.IP {
@@ -113,7 +87,10 @@ func discoverRouters() ([]string, error) {
 
 	gw, err := gatewayFromRoute()
 	if err != nil {
-		gw = "192.168.0.1"
+		gw, err = defaultGatewayIP()
+		if err != nil {
+			gw = "192.168.0.1"
+		}
 	}
 
 	if isTendaRouter(gw) {
