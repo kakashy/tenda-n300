@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"time"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -49,6 +50,8 @@ type setQosResponse struct {
 	ErrCode string `json:"errCode"`
 }
 
+const clientTimeout = 10 * time.Second
+
 type RouterClient struct {
 	baseURL string
 	client  *http.Client
@@ -62,7 +65,7 @@ func NewRouterClient(ip, password string) (*RouterClient, error) {
 	}
 	c := &RouterClient{
 		baseURL: baseURL,
-		client:  &http.Client{Jar: jar},
+		client:  &http.Client{Jar: jar, Timeout: clientTimeout},
 	}
 	if err := c.login(password); err != nil {
 		return nil, err
