@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"time"
@@ -52,6 +53,17 @@ type setQosResponse struct {
 
 const clientTimeout = 10 * time.Second
 
+// wrapTimeoutError returns a user-friendly message if err is a network timeout.
+func wrapTimeoutError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return fmt.Errorf("connection to router timed out (is the router online?)")
+	}
+	return err
+}
+
 type RouterClient struct {
 	baseURL string
 	client  *http.Client
@@ -76,7 +88,7 @@ func NewRouterClient(ip, password string) (*RouterClient, error) {
 func (c *RouterClient) getStok() (string, error) {
 	resp, err := c.client.Get(c.baseURL + "/goform/getstok")
 	if err != nil {
-		return "", fmt.Errorf("getstok: %w", err)
+		return "", wrapTimeoutError(fmt.Errorf("getstok: %w", err))
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
@@ -116,7 +128,7 @@ func (c *RouterClient) login(password string) error {
 		resp, err := c.client.Do(req)
 		if err != nil {
 			if i == 2 {
-				return fmt.Errorf("login: %w", err)
+				return wrapTimeoutError(fmt.Errorf("login: %w", err))
 			}
 			continue
 		}
@@ -136,7 +148,11 @@ func (c *RouterClient) get(path string) (*http.Response, error) {
 	}
 	req.Header.Set("User-Agent", "tenda-n300/1.0")
 	req.Header.Set("Referer", c.baseURL+"/index.html")
-	return c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, wrapTimeoutError(err)
+	}
+	return resp, nil
 }
 
 func (c *RouterClient) post(path string, data url.Values) (*http.Response, error) {
@@ -147,7 +163,11 @@ func (c *RouterClient) post(path string, data url.Values) (*http.Response, error
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "tenda-n300/1.0")
 	req.Header.Set("Referer", c.baseURL+"/index.html")
-	return c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, wrapTimeoutError(err)
+	}
+	return resp, nil
 }
 
 func (c *RouterClient) GetDevices() ([]Device, error) {
@@ -316,7 +336,7 @@ func (c *RouterClient) RestoreConfig(path string) error {
 	req.Header.Set("Referer", c.baseURL+"/index.html")
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("restore: %w", err)
+		return wrapTimeoutError(fmt.Errorf("restore: %w", err))
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
