@@ -53,5 +53,9 @@ func ValidateIPv4(ip string) error {
 	if parsed.To4() == nil {
 		return fmt.Errorf("invalid IPv4 address %q (IPv6 not supported)", ip)
 	}
+	// Reject IPv4-mapped IPv6 (::ffff:x.x.x.x)
+	if strings.Contains(ip, ":") {
+		return fmt.Errorf("invalid IPv4 address %q (IPv6 not supported)", ip)
+	}
 	return nil
 }

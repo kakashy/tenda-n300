@@ -52,6 +52,12 @@ Flags:
 		flag.Usage()
 		os.Exit(1)
 	}
+	if ip != "" {
+		if err := ValidateIPv4(ip); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+	}
 
 	switch args[0] {
 	case "discover":
@@ -237,6 +243,10 @@ func connectRouter(ip, password string) *RouterClient {
 			fmt.Scanln(&ip)
 			if ip == "" {
 				fmt.Fprintln(os.Stderr, "no IP provided")
+				os.Exit(1)
+			}
+			if err := ValidateIPv4(ip); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
 				os.Exit(1)
 			}
 		}
