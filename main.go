@@ -206,6 +206,12 @@ func connectRouter(ip, password string) *RouterClient {
 		}
 		if ip == "" {
 			ip = cfg.IP
+			if ip != "" {
+				if err := ValidateIPv4(ip); err != nil {
+					fmt.Fprintln(os.Stderr, "error: invalid IP in config:", err)
+					os.Exit(1)
+				}
+			}
 		}
 		if password == "" {
 			password, err = keyringGetPassword()
