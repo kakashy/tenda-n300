@@ -376,6 +376,10 @@ func cmdConfig(args []string) {
 		}
 		switch key {
 		case "ip":
+			if err := ValidateIPv4(val); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				os.Exit(1)
+			}
 			cfg.IP = val
 		case "password":
 			if err := keyringSetPassword(val); err != nil {

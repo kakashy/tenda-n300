@@ -215,6 +215,12 @@ func (c *RouterClient) UnblockMAC(mac string) error {
 }
 
 func (c *RouterClient) setMACAccess(targetMAC, action string) error {
+	// Validate and normalize MAC address
+	if err := ValidateMAC(targetMAC); err != nil {
+		return err
+	}
+	targetMAC = NormalizeMAC(targetMAC)
+
 	resp, err := c.get("/goform/getQos?modules=onlineList,blackList")
 	if err != nil {
 		return fmt.Errorf("fetch QoS: %w", err)
@@ -229,11 +235,10 @@ func (c *RouterClient) setMACAccess(targetMAC, action string) error {
 		return fmt.Errorf("decode QoS: %w", err)
 	}
 
-	targetMAC = strings.ToLower(targetMAC)
 	var b strings.Builder
 
 	for _, d := range qos.OnlineList {
-		mac := strings.ToLower(d.MAC)
+		mac := NormalizeMAC(d.MAC)
 		access := d.Access
 		if mac == targetMAC {
 			if action == "block" {
@@ -245,7 +250,7 @@ func (c *RouterClient) setMACAccess(targetMAC, action string) error {
 		b.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", d.Hostname, d.Remark, d.MAC, d.UpLimit, d.DownLimit, access))
 	}
 	for _, d := range qos.BlackList {
-		mac := strings.ToLower(d.MAC)
+		mac := NormalizeMAC(d.MAC)
 		if mac == targetMAC && action == "unblock" {
 			continue
 		}
