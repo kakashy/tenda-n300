@@ -285,13 +285,21 @@ func cmdUninstall() {
 		}
 	}
 
+	var errs []string
+
 	// Remove keyring entry
-	keyringDeletePassword()
+	if err := keyringDeletePassword(); err != nil {
+		errs = append(errs, fmt.Sprintf("keyring: %v", err))
+	}
 
 	// Remove config directory
-	configDir, _ := configDir()
-	if configDir != "" {
-		os.RemoveAll(configDir)
+	configDir, err := configDir()
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("config dir: %v", err))
+	} else if configDir != "" {
+		if err := os.RemoveAll(configDir); err != nil {
+			errs = append(errs, fmt.Sprintf("config dir remove: %v", err))
+		}
 	}
 
 	// Remove shell completions (paths mirror install.sh)
@@ -305,17 +313,27 @@ func cmdUninstall() {
 		filepath.Join(home, ".zsh/completion/_tenda-n300"),
 	}
 	for _, p := range completionPaths {
-		os.Remove(p)
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, fmt.Sprintf("completion %s: %v", p, err))
+		}
 	}
 
 	// Remove the binary itself (works on Linux/macOS)
 	bin, err := os.Executable()
-	if err == nil {
-		if runtime.GOOS == "windows" {
-			fmt.Fprintf(os.Stderr, "remove the binary manually: del %s\n", bin)
-		} else {
-			os.Remove(bin)
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("find binary: %v", err))
+	} else if runtime.GOOS == "windows" {
+		fmt.Fprintf(os.Stderr, "remove the binary manually: del %s\n", bin)
+	} else if err := os.Remove(bin); err != nil {
+		errs = append(errs, fmt.Sprintf("binary remove: %v", err))
+	}
+
+	if len(errs) > 0 {
+		fmt.Fprintln(os.Stderr, "uninstall completed with errors:")
+		for _, e := range errs {
+			fmt.Fprintln(os.Stderr, "  -", e)
 		}
+		os.Exit(1)
 	}
 
 	fmt.Println("uninstalled")
