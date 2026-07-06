@@ -67,7 +67,9 @@ func SaveConfig(cfg *Config) error {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "saved config to %s\n", path)
+	if !jsonOutput {
+		fmt.Fprintf(os.Stderr, "saved config to %s\n", path)
+	}
 	return nil
 }
 

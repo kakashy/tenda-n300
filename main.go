@@ -402,7 +402,9 @@ func cmdConfig(args []string) {
 				fmt.Fprintln(os.Stderr, "error: failed to save password to OS keyring:", err)
 				os.Exit(1)
 			}
-			fmt.Fprintln(os.Stderr, "password saved to OS keyring")
+			if !jsonOutput {
+				fmt.Fprintln(os.Stderr, "password saved to OS keyring")
+			}
 			return
 		default:
 			fmt.Fprintf(os.Stderr, "unknown config key: %s (use ip or password)\n", key)
