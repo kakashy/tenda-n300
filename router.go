@@ -47,6 +47,31 @@ type stokResponse struct {
 	Random string `json:"random"`
 }
 
+type FirmwareInfo struct {
+	Model          string `json:"model"`
+	Version        string `json:"version"`
+	Hardware       string `json:"hardware"`
+	Uptime         string `json:"uptime"`
+	DefaultDNS     string `json:"defaultdns"`
+	AltDNS         string `json:"altdns"`
+	ConnectionType string `json:"connectiontype"`
+	Gateway        string `json:"gateway"`
+}
+
+type statusResponse struct {
+	Uptime          string `json:"uptime"`
+	Model           string `json:"model"`
+	HardwareVersion string `json:"hardwareVersion"`
+	SoftVersion     string `json:"softVersion"`
+}
+
+type internetCfgResponse struct {
+	WanType    string `json:"wanType"`
+	DNSServer  string `json:"dnsServer"`
+	DNSServer1 string `json:"dnsServer1"`
+	Gateway    string `json:"gateway"`
+}
+
 type setQosResponse struct {
 	ErrCode string `json:"errCode"`
 }
@@ -344,11 +369,82 @@ func (c *RouterClient) RestoreConfig(path string) error {
 		return wrapTimeoutError(fmt.Errorf("restore: %w", err))
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if strings.Contains(string(body), `errCode":0`) || strings.Contains(string(body), `errCode":100`) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("restore: read response: %w", err)
+	}
+
+	var result struct {
+		ErrCode json.RawMessage `json:"errCode"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("restore: parse response: %w", err)
+	}
+
+	code := strings.Trim(string(result.ErrCode), `" `)
+	if code == "0" || code == "100" {
 		return nil
 	}
 	return fmt.Errorf("restore failed: server returned unexpected response")
+}
+
+func (c *RouterClient) GetFirmwareInfo() (*FirmwareInfo, error) {
+	status, err := c.getStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := c.getInternetCfg()
+	if err != nil {
+		return nil, err
+	}
+
+	connType := strings.ToUpper(cfg.WanType)
+
+	return &FirmwareInfo{
+		Model:          status.Model,
+		Version:        status.SoftVersion,
+		Hardware:       status.HardwareVersion,
+		Uptime:         status.Uptime,
+		DefaultDNS:     cfg.DNSServer,
+		AltDNS:         cfg.DNSServer1,
+		ConnectionType: connType,
+		Gateway:        cfg.Gateway,
+	}, nil
+}
+
+func (c *RouterClient) getStatus() (*statusResponse, error) {
+	resp, err := c.get("/goform/GetStatus")
+	if err != nil {
+		return nil, fmt.Errorf("get status: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read status: %w", err)
+	}
+	var s statusResponse
+	if err := json.Unmarshal(body, &s); err != nil {
+		return nil, fmt.Errorf("decode status: %w", err)
+	}
+	return &s, nil
+}
+
+func (c *RouterClient) getInternetCfg() (*internetCfgResponse, error) {
+	resp, err := c.get("/goform/getInternetCfg")
+	if err != nil {
+		return nil, fmt.Errorf("get internet cfg: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read internet cfg: %w", err)
+	}
+	var cfg internetCfgResponse
+	if err := json.Unmarshal(body, &cfg); err != nil {
+		return nil, fmt.Errorf("decode internet cfg: %w", err)
+	}
+	return &cfg, nil
 }
 
 func (c *RouterClient) ExportSyslog() ([]byte, error) {
