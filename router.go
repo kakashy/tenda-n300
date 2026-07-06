@@ -51,18 +51,10 @@ type FirmwareInfo struct {
 	Model          string `json:"model"`
 	Version        string `json:"version"`
 	Hardware       string `json:"hardware"`
-	Uptime         string `json:"uptime"`
 	DefaultDNS     string `json:"defaultdns"`
 	AltDNS         string `json:"altdns"`
 	ConnectionType string `json:"connectiontype"`
 	Gateway        string `json:"gateway"`
-}
-
-type statusResponse struct {
-	Uptime          string `json:"uptime"`
-	Model           string `json:"model"`
-	HardwareVersion string `json:"hardwareVersion"`
-	SoftVersion     string `json:"softVersion"`
 }
 
 type internetCfgResponse struct {
@@ -388,46 +380,61 @@ func (c *RouterClient) RestoreConfig(path string) error {
 	return fmt.Errorf("restore failed: server returned unexpected response")
 }
 
-func (c *RouterClient) GetFirmwareInfo() (*FirmwareInfo, error) {
-	status, err := c.getStatus()
-	if err != nil {
-		return nil, err
+func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
+	info := &FirmwareInfo{}
+
+	body, err := c.getLoginPage()
+	if err == nil {
+		info.Model = extractJSVar(body, "model_name")
+		info.Hardware = extractJSVar(body, "hardware_version")
+		info.Version = extractJSVar(body, "firmware_version")
 	}
 
-	cfg, err := c.getInternetCfg()
-	if err != nil {
-		return nil, err
+	if cfg, err := c.getInternetCfg(); err == nil {
+		info.DefaultDNS = cfg.DNSServer
+		info.AltDNS = cfg.DNSServer1
+		info.ConnectionType = strings.ToUpper(cfg.WanType)
+		info.Gateway = cfg.Gateway
 	}
 
-	connType := strings.ToUpper(cfg.WanType)
-
-	return &FirmwareInfo{
-		Model:          status.Model,
-		Version:        status.SoftVersion,
-		Hardware:       status.HardwareVersion,
-		Uptime:         status.Uptime,
-		DefaultDNS:     cfg.DNSServer,
-		AltDNS:         cfg.DNSServer1,
-		ConnectionType: connType,
-		Gateway:        cfg.Gateway,
-	}, nil
+	return info
 }
 
-func (c *RouterClient) getStatus() (*statusResponse, error) {
-	resp, err := c.get("/goform/GetStatus")
+func (c *RouterClient) getLoginPage() ([]byte, error) {
+	resp, err := c.get("/login.html")
 	if err != nil {
-		return nil, fmt.Errorf("get status: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read status: %w", err)
+	return io.ReadAll(resp.Body)
+}
+
+func extractJSVar(html []byte, name string) string {
+	s := string(html)
+	prefixes := []string{
+		`var ` + name + `=`,
+		`var ` + name + ` = `,
 	}
-	var s statusResponse
-	if err := json.Unmarshal(body, &s); err != nil {
-		return nil, fmt.Errorf("decode status: %w", err)
+	for _, prefix := range prefixes {
+		i := strings.Index(s, prefix)
+		if i == -1 {
+			continue
+		}
+		start := i + len(prefix)
+		if start >= len(s) {
+			continue
+		}
+		quote := s[start]
+		if quote != '"' && quote != '\'' {
+			continue
+		}
+		end := strings.IndexByte(s[start+1:], byte(quote))
+		if end == -1 {
+			continue
+		}
+		return s[start+1 : start+1+end]
 	}
-	return &s, nil
+	return ""
 }
 
 func (c *RouterClient) getInternetCfg() (*internetCfgResponse, error) {

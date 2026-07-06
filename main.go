@@ -83,12 +83,8 @@ Flags:
 			printDeviceTable(devices)
 		case "firmwareinfo":
 			startSpinner("fetching firmware info")
-			info, err := client.GetFirmwareInfo()
+			info := client.GetFirmwareInfo()
 			stopSpinner()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
-				os.Exit(1)
-			}
 			printFirmwareInfo(info)
 		case "status":
 			startSpinner("fetching devices")
