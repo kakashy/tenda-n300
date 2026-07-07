@@ -58,11 +58,24 @@ type FirmwareInfo struct {
 	Gateway        string `json:"gateway"`
 }
 
-type internetCfgResponse struct {
-	WanType    string `json:"wanType"`
-	DNSServer  string `json:"dnsServer"`
-	DNSServer1 string `json:"dnsServer1"`
-	Gateway    string `json:"gateway"`
+type statusModulesResponse struct {
+	SystemInfo *systemInfoModule `json:"systemInfo"`
+}
+
+type systemInfoModule struct {
+	WanType         string `json:"wanType"`
+	WanConnectTime  string `json:"wanConnectTime"`
+	WanIP           string `json:"wanIP"`
+	WanMask         string `json:"wanMask"`
+	WanGaterway     string `json:"wanGaterway"`
+	WanDns1         string `json:"wanDns1"`
+	WanDns2         string `json:"wanDns2"`
+	LanIP           string `json:"lanIP"`
+	LanNetmask      string `json:"lanNetmask"`
+	WanMac          string `json:"wanMac"`
+	SoftVersion     string `json:"softVersion"`
+	HardwareVersion string `json:"hardwareVersion"`
+	Model           string `json:"model"`
 }
 
 type setQosResponse struct {
@@ -384,69 +397,83 @@ func (c *RouterClient) RestoreConfig(path string) error {
 func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
 	info := &FirmwareInfo{}
 
-	body, err := c.getIndexPage()
+	status, err := c.getStatus()
 	if err != nil {
 		return info
 	}
 
-	info.ConnectionType = extractHTMLValue(body, "wanType")
-	info.Version = extractHTMLValue(body, "softVersion")
-	info.DefaultDNS = extractHTMLValue(body, "statusWanDns1")
-	info.AltDNS = extractHTMLValue(body, "statusWanDns2")
-	info.Gateway = extractHTMLValue(body, "statusWanGaterway")
-	info.Uptime = extractHTMLValue(body, "wanConnectTime")
+	if s := status.SystemInfo; s != nil {
+		info.ConnectionType = translateWanType(s.WanType)
+		info.Version = s.SoftVersion
+		info.Hardware = s.HardwareVersion
+		info.Model = s.Model
+		info.DefaultDNS = s.WanDns1
+		info.AltDNS = s.WanDns2
+		info.Gateway = s.WanGaterway
+		info.Uptime = formatUptime(s.WanConnectTime)
+	}
 
 	return info
 }
 
-func (c *RouterClient) getIndexPage() ([]byte, error) {
-	resp, err := c.get("/index.html")
+func (c *RouterClient) getStatus() (*statusModulesResponse, error) {
+	path := "/goform/getStatus?modules=systemInfo"
+	resp, err := c.get(path)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
-}
-
-func extractHTMLValue(html []byte, id string) string {
-	s := string(html)
-	prefix := `id="` + id + `"`
-	i := strings.Index(s, prefix)
-	if i == -1 {
-		return ""
-	}
-	afterID := s[i+len(prefix):]
-	closeTag := strings.IndexByte(afterID, '>')
-	if closeTag == -1 {
-		return ""
-	}
-	afterGT := afterID[closeTag+1:]
-	end := strings.Index(afterGT, "</")
-	if end == -1 {
-		return ""
-	}
-	val := strings.TrimSpace(afterGT[:end])
-	if val == "-" {
-		return ""
-	}
-	return val
-}
-
-func (c *RouterClient) getInternetCfg() (*internetCfgResponse, error) {
-	resp, err := c.get("/goform/getInternetCfg")
-	if err != nil {
-		return nil, fmt.Errorf("get internet cfg: %w", err)
+		return nil, fmt.Errorf("get status: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read internet cfg: %w", err)
+		return nil, fmt.Errorf("read status: %w", err)
 	}
-	var cfg internetCfgResponse
-	if err := json.Unmarshal(body, &cfg); err != nil {
-		return nil, fmt.Errorf("decode internet cfg: %w", err)
+	var s statusModulesResponse
+	if err := json.Unmarshal(body, &s); err != nil {
+		return nil, fmt.Errorf("decode status: %w", err)
 	}
-	return &cfg, nil
+	return &s, nil
+}
+
+func translateWanType(t string) string {
+	switch t {
+	case "dhcp":
+		return "Dynamic IP"
+	case "pppoe":
+		return "PPPoE"
+	default:
+		return "Static IP"
+	}
+}
+
+func formatUptime(secs string) string {
+	n, err := fmt.Sscanf(secs, "%d", new(int))
+	if err != nil || n == 0 {
+		return secs
+	}
+	var total int
+	fmt.Sscanf(secs, "%d", &total)
+	if total == 0 {
+		return ""
+	}
+	d := total / 86400
+	total %= 86400
+	h := total / 3600
+	total %= 3600
+	m := total / 60
+	s := total % 60
+
+	parts := ""
+	if d > 0 {
+		parts = fmt.Sprintf("%dd ", d)
+	}
+	if h > 0 {
+		parts += fmt.Sprintf("%dh ", h)
+	}
+	if m > 0 {
+		parts += fmt.Sprintf("%dm ", m)
+	}
+	parts += fmt.Sprintf("%ds", s)
+	return parts
 }
 
 func (c *RouterClient) ExportSyslog() ([]byte, error) {

@@ -15,6 +15,8 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 		switch r.URL.Path {
 		case "/goform/getstok":
 			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+		case "/index.html":
+			w.Write([]byte("ok"))
 		case "/login/Auth":
 			if loginOK {
 				w.Header().Set("Location", "/index.html")
@@ -55,21 +57,18 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 			w.Write([]byte("mock-config-data"))
 		case "/cgi-bin/DownloadSyslog/RouterSystem.log":
 			w.Write([]byte("mock-syslog-data"))
-		case "/index.html":
-			w.Write([]byte(`<html><body>
-				<p id="wanType">Dynamic IP</p>
-				<p id="softVersion">V12.01.01.59_multi</p>
-				<p id="statusWanDns1">8.8.8.8</p>
-				<p id="statusWanDns2">8.8.4.4</p>
-				<p id="statusWanGaterway">10.0.0.1</p>
-				<p id="wanConnectTime">45m 43s</p>
-			</body></html>`))
-		case "/goform/getInternetCfg":
-			json.NewEncoder(w).Encode(map[string]string{
-				"wanType":    "dhcp",
-				"dnsServer":  "8.8.8.8",
-				"dnsServer1": "8.8.4.4",
-				"gateway":    "10.0.0.1",
+		case "/goform/getStatus":
+			json.NewEncoder(w).Encode(statusModulesResponse{
+				SystemInfo: &systemInfoModule{
+					WanType:         "dhcp",
+					WanConnectTime:  "2743",
+					WanGaterway:     "10.0.0.1",
+					WanDns1:         "8.8.8.8",
+					WanDns2:         "8.8.4.4",
+					SoftVersion:     "V12.01.01.59_multi",
+					HardwareVersion: "V1.0",
+					Model:           "N300",
+				},
 			})
 		case "/cgi-bin/UploadCfg":
 			w.Write([]byte(`{"errCode":0}`))
@@ -373,8 +372,14 @@ func TestGetFirmwareInfo(t *testing.T) {
 	if info == nil {
 		t.Fatal("expected non-nil FirmwareInfo")
 	}
+	if info.Model != "N300" {
+		t.Errorf("expected Model=N300, got %s", info.Model)
+	}
 	if info.Version != "V12.01.01.59_multi" {
 		t.Errorf("expected Version=V12.01.01.59_multi, got %s", info.Version)
+	}
+	if info.Hardware != "V1.0" {
+		t.Errorf("expected Hardware=V1.0, got %s", info.Hardware)
 	}
 	if info.DefaultDNS != "8.8.8.8" {
 		t.Errorf("expected DefaultDNS=8.8.8.8, got %s", info.DefaultDNS)
@@ -393,79 +398,52 @@ func TestGetFirmwareInfo(t *testing.T) {
 	}
 }
 
-func TestExtractHTMLValue(t *testing.T) {
+func TestTranslateWanType(t *testing.T) {
 	tests := []struct {
-		name string
-		html string
-		id   string
+		in   string
 		want string
 	}{
-		{"p tag", `<p id="wanType">Dynamic IP</p>`, "wanType", "Dynamic IP"},
-		{"span tag", `<span id="ver">1.0</span>`, "ver", "1.0"},
-		{"with attrs", `<p id="foo" class="bar">value</p>`, "foo", "value"},
-		{"missing id", `<p id="other">val</p>`, "missing", ""},
-		{"empty value", `<p id="x"></p>`, "x", ""},
-		{"dash value", `<p id="dns2">-</p>`, "dns2", ""},
-		{"nested", `<div><p id="nested">deep</p></div>`, "nested", "deep"},
+		{"dhcp", "Dynamic IP"},
+		{"pppoe", "PPPoE"},
+		{"static", "Static IP"},
+		{"", "Static IP"},
 	}
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := extractHTMLValue([]byte(tc.html), tc.id)
-			if got != tc.want {
-				t.Errorf("expected %q, got %q", tc.want, got)
-			}
-		})
+		got := translateWanType(tc.in)
+		if got != tc.want {
+			t.Errorf("translateWanType(%q) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }
 
-func TestInternetCfgResponse(t *testing.T) {
+func TestFormatUptime(t *testing.T) {
 	tests := []struct {
-		json string
-		want internetCfgResponse
+		secs string
+		want string
 	}{
-		{
-			`{"wanType":"dhcp","dnsServer":"8.8.8.8","dnsServer1":"8.8.4.4","gateway":"10.0.0.1"}`,
-			internetCfgResponse{
-				WanType:    "dhcp",
-				DNSServer:  "8.8.8.8",
-				DNSServer1: "8.8.4.4",
-				Gateway:    "10.0.0.1",
-			},
-		},
-		{
-			`{"wanType":"pppoe","dnsServer":"1.1.1.1","dnsServer1":"","gateway":"0.0.0.0"}`,
-			internetCfgResponse{
-				WanType:    "pppoe",
-				DNSServer:  "1.1.1.1",
-				DNSServer1: "",
-				Gateway:    "0.0.0.0",
-			},
-		},
+		{"2743", "45m 43s"},
+		{"3661", "1h 1m 1s"},
+		{"86400", "1d 0s"},
+		{"0", ""},
+		{"", ""},
+		{"invalid", "invalid"},
 	}
 	for _, tc := range tests {
-		var res internetCfgResponse
-		if err := json.Unmarshal([]byte(tc.json), &res); err != nil {
-			t.Fatal(err)
-		}
-		if res.WanType != tc.want.WanType {
-			t.Errorf("expected WanType=%s, got %s", tc.want.WanType, res.WanType)
-		}
-		if res.DNSServer != tc.want.DNSServer {
-			t.Errorf("expected DNSServer=%s, got %s", tc.want.DNSServer, res.DNSServer)
-		}
-		if res.DNSServer1 != tc.want.DNSServer1 {
-			t.Errorf("expected DNSServer1=%s, got %s", tc.want.DNSServer1, res.DNSServer1)
-		}
-		if res.Gateway != tc.want.Gateway {
-			t.Errorf("expected Gateway=%s, got %s", tc.want.Gateway, res.Gateway)
+		got := formatUptime(tc.secs)
+		if got != tc.want {
+			t.Errorf("formatUptime(%q) = %q, want %q", tc.secs, got, tc.want)
 		}
 	}
 }
 
-func TestGetFirmwareInfoIndexFails(t *testing.T) {
+func TestGetFirmwareInfoAPIFails(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/goform/getstok" {
 			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
 			return
 		}
 		if r.URL.Path == "/login/Auth" {
@@ -473,7 +451,7 @@ func TestGetFirmwareInfoIndexFails(t *testing.T) {
 			w.WriteHeader(http.StatusFound)
 			return
 		}
-		// index.html returns 404
+		// getStatus returns 404
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
@@ -486,10 +464,10 @@ func TestGetFirmwareInfoIndexFails(t *testing.T) {
 
 	info := client.GetFirmwareInfo()
 	if info == nil {
-		t.Fatal("expected non-nil FirmwareInfo even when index fails")
+		t.Fatal("expected non-nil FirmwareInfo even when API fails")
 	}
 	if info.Version != "" {
-		t.Errorf("expected empty Version when index fails, got %s", info.Version)
+		t.Errorf("expected empty Version when API fails, got %s", info.Version)
 	}
 }
 
