@@ -392,14 +392,13 @@ func (c *RouterClient) RestoreConfig(path string) error {
 	return fmt.Errorf("restore failed: server returned unexpected response")
 }
 
-func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
-	info := &FirmwareInfo{}
-
+func (c *RouterClient) GetFirmwareInfo() (*FirmwareInfo, error) {
 	status, err := c.getStatus()
 	if err != nil {
-		return info
+		return nil, err
 	}
 
+	info := &FirmwareInfo{}
 	if s := status.SystemInfo; s != nil {
 		info.ConnectionType = translateWanType(s.WanType)
 		info.Version = s.SoftVersion
@@ -411,7 +410,7 @@ func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
 		info.Uptime = formatUptime(s.WanConnectTime)
 	}
 
-	return info
+	return info, nil
 }
 
 func (c *RouterClient) getStatus() (*statusModulesResponse, error) {
@@ -444,13 +443,11 @@ func translateWanType(t string) string {
 }
 
 func formatUptime(secs string) string {
-	n, err := fmt.Sscanf(secs, "%d", new(int))
-	if err != nil || n == 0 {
+	var total int
+	if _, err := fmt.Sscanf(secs, "%d", &total); err != nil {
 		return secs
 	}
-	var total int
-	fmt.Sscanf(secs, "%d", &total)
-	if total == 0 {
+	if total <= 0 {
 		return ""
 	}
 	d := total / 86400
@@ -460,18 +457,18 @@ func formatUptime(secs string) string {
 	m := total / 60
 	s := total % 60
 
-	parts := ""
+	var parts strings.Builder
 	if d > 0 {
-		parts = fmt.Sprintf("%dd ", d)
+		fmt.Fprintf(&parts, "%dd ", d)
 	}
 	if h > 0 {
-		parts += fmt.Sprintf("%dh ", h)
+		fmt.Fprintf(&parts, "%dh ", h)
 	}
 	if m > 0 {
-		parts += fmt.Sprintf("%dm ", m)
+		fmt.Fprintf(&parts, "%dm ", m)
 	}
-	parts += fmt.Sprintf("%ds", s)
-	return parts
+	fmt.Fprintf(&parts, "%ds", s)
+	return parts.String()
 }
 
 func (c *RouterClient) ExportSyslog() ([]byte, error) {

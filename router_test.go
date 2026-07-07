@@ -368,7 +368,10 @@ func TestGetFirmwareInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	info := client.GetFirmwareInfo()
+	info, err := client.GetFirmwareInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if info == nil {
 		t.Fatal("expected non-nil FirmwareInfo")
 	}
@@ -451,7 +454,6 @@ func TestGetFirmwareInfoAPIFails(t *testing.T) {
 			w.WriteHeader(http.StatusFound)
 			return
 		}
-		// getStatus returns 404
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
@@ -462,12 +464,9 @@ func TestGetFirmwareInfoAPIFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	info := client.GetFirmwareInfo()
-	if info == nil {
-		t.Fatal("expected non-nil FirmwareInfo even when API fails")
-	}
-	if info.Version != "" {
-		t.Errorf("expected empty Version when API fails, got %s", info.Version)
+	_, err = client.GetFirmwareInfo()
+	if err == nil {
+		t.Fatal("expected error when API fails")
 	}
 }
 
