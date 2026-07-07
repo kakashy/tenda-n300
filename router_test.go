@@ -60,14 +60,12 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 		case "/goform/getStatus":
 			json.NewEncoder(w).Encode(statusModulesResponse{
 				SystemInfo: &systemInfoModule{
-					WanType:         "dhcp",
-					WanConnectTime:  "2743",
-					WanGaterway:     "10.0.0.1",
-					WanDns1:         "8.8.8.8",
-					WanDns2:         "8.8.4.4",
-					SoftVersion:     "V12.01.01.59_multi",
-					HardwareVersion: "V1.0",
-					Model:           "N300",
+					WanType:           "dhcp",
+					WanConnectTime:    "2743",
+					SoftVersion:       "V12.01.01.59_multi",
+					StatusWanDns1:     "8.8.8.8",
+					StatusWanDns2:     "8.8.4.4",
+					StatusWanGaterway: "10.0.0.1",
 				},
 			})
 		case "/cgi-bin/UploadCfg":
@@ -372,14 +370,8 @@ func TestGetFirmwareInfo(t *testing.T) {
 	if info == nil {
 		t.Fatal("expected non-nil FirmwareInfo")
 	}
-	if info.Model != "N300" {
-		t.Errorf("expected Model=N300, got %s", info.Model)
-	}
 	if info.Version != "V12.01.01.59_multi" {
 		t.Errorf("expected Version=V12.01.01.59_multi, got %s", info.Version)
-	}
-	if info.Hardware != "V1.0" {
-		t.Errorf("expected Hardware=V1.0, got %s", info.Hardware)
 	}
 	if info.DefaultDNS != "8.8.8.8" {
 		t.Errorf("expected DefaultDNS=8.8.8.8, got %s", info.DefaultDNS)

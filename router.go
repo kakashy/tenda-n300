@@ -48,9 +48,7 @@ type stokResponse struct {
 }
 
 type FirmwareInfo struct {
-	Model          string `json:"model"`
 	Version        string `json:"version"`
-	Hardware       string `json:"hardware"`
 	Uptime         string `json:"uptime"`
 	DefaultDNS     string `json:"defaultdns"`
 	AltDNS         string `json:"altdns"`
@@ -65,17 +63,15 @@ type statusModulesResponse struct {
 type systemInfoModule struct {
 	WanType         string `json:"wanType"`
 	WanConnectTime  string `json:"wanConnectTime"`
-	WanIP           string `json:"wanIP"`
-	WanMask         string `json:"wanMask"`
-	WanGaterway     string `json:"wanGaterway"`
-	WanDns1         string `json:"wanDns1"`
-	WanDns2         string `json:"wanDns2"`
 	LanIP           string `json:"lanIP"`
-	LanNetmask      string `json:"lanNetmask"`
-	WanMac          string `json:"wanMac"`
+	MacHost         string `json:"macHost"`
 	SoftVersion     string `json:"softVersion"`
-	HardwareVersion string `json:"hardwareVersion"`
-	Model           string `json:"model"`
+	StatusWanDns1   string `json:"statusWanDns1"`
+	StatusWanDns2   string `json:"statusWanDns2"`
+	StatusWanGaterway string `json:"statusWanGaterway"`
+	StatusWanIP     string `json:"statusWanIP"`
+	StatusWanMAC    string `json:"statusWanMAC"`
+	StatusWanMask   string `json:"statusWanMask"`
 }
 
 type setQosResponse struct {
@@ -405,11 +401,9 @@ func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
 	if s := status.SystemInfo; s != nil {
 		info.ConnectionType = translateWanType(s.WanType)
 		info.Version = s.SoftVersion
-		info.Hardware = s.HardwareVersion
-		info.Model = s.Model
-		info.DefaultDNS = s.WanDns1
-		info.AltDNS = s.WanDns2
-		info.Gateway = s.WanGaterway
+		info.DefaultDNS = s.StatusWanDns1
+		info.AltDNS = s.StatusWanDns2
+		info.Gateway = s.StatusWanGaterway
 		info.Uptime = formatUptime(s.WanConnectTime)
 	}
 
