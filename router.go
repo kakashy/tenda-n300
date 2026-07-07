@@ -54,6 +54,8 @@ type FirmwareInfo struct {
 	AltDNS         string `json:"altdns"`
 	ConnectionType string `json:"connectiontype"`
 	Gateway        string `json:"gateway"`
+	WanIP          string `json:"wanip"`
+	WanMAC         string `json:"wanmac"`
 }
 
 type statusModulesResponse struct {
@@ -404,6 +406,8 @@ func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
 		info.DefaultDNS = s.StatusWanDns1
 		info.AltDNS = s.StatusWanDns2
 		info.Gateway = s.StatusWanGaterway
+		info.WanIP = s.StatusWanIP
+		info.WanMAC = s.StatusWanMAC
 		info.Uptime = formatUptime(s.WanConnectTime)
 	}
 

@@ -66,6 +66,8 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 					StatusWanDns1:     "8.8.8.8",
 					StatusWanDns2:     "8.8.4.4",
 					StatusWanGaterway: "10.0.0.1",
+					StatusWanIP:       "10.0.0.100",
+					StatusWanMAC:      "aa:bb:cc:dd:ee:ff",
 				},
 			})
 		case "/cgi-bin/UploadCfg":
@@ -387,6 +389,12 @@ func TestGetFirmwareInfo(t *testing.T) {
 	}
 	if info.Uptime != "45m 43s" {
 		t.Errorf("expected Uptime='45m 43s', got %s", info.Uptime)
+	}
+	if info.WanIP != "10.0.0.100" {
+		t.Errorf("expected WanIP=10.0.0.100, got %s", info.WanIP)
+	}
+	if info.WanMAC != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("expected WanMAC=aa:bb:cc:dd:ee:ff, got %s", info.WanMAC)
 	}
 }
 
