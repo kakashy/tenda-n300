@@ -70,6 +70,21 @@ func printJSON(v any) {
 	enc.Encode(v)
 }
 
+func printFirmwareInfo(info *FirmwareInfo) {
+	if jsonOutput {
+		printJSON(info)
+		return
+	}
+	fmt.Printf("Version:         %s\n", info.Version)
+	fmt.Printf("Uptime:          %s\n", info.Uptime)
+	fmt.Printf("Default DNS:     %s\n", info.DefaultDNS)
+	fmt.Printf("Alt DNS:         %s\n", info.AltDNS)
+	fmt.Printf("Connection Type: %s\n", info.ConnectionType)
+	fmt.Printf("Gateway:         %s\n", info.Gateway)
+	fmt.Printf("WAN IP:          %s\n", info.WanIP)
+	fmt.Printf("WAN MAC:         %s\n", info.WanMAC)
+}
+
 func printDeviceTable(devices []Device) {
 	if jsonOutput {
 		printJSON(devices)

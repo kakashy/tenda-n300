@@ -21,6 +21,7 @@ Commands:
   devices               List connected devices
   block <mac>           Block a device by MAC address
   unblock <mac>         Unblock a device by MAC address
+  firmwareinfo          Show router firmware information
   status                Show router summary
   reboot                Reboot the router
   reset                 Factory reset router (wipes all config)
@@ -68,7 +69,7 @@ Flags:
 		cmdCompletion(args[1:])
 	case "uninstall":
 		cmdUninstall()
-	case "devices", "status", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
+	case "devices", "status", "firmwareinfo", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
 		client := connectRouter(ip, password)
 		switch args[0] {
 		case "devices":
@@ -80,6 +81,15 @@ Flags:
 				os.Exit(1)
 			}
 			printDeviceTable(devices)
+		case "firmwareinfo":
+			startSpinner("fetching firmware info")
+			info, err := client.GetFirmwareInfo()
+			stopSpinner()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				os.Exit(1)
+			}
+			printFirmwareInfo(info)
 		case "status":
 			startSpinner("fetching devices")
 			devices, err := client.GetDevices()

@@ -47,6 +47,35 @@ type stokResponse struct {
 	Random string `json:"random"`
 }
 
+type FirmwareInfo struct {
+	Version        string `json:"version"`
+	Uptime         string `json:"uptime"`
+	DefaultDNS     string `json:"defaultdns"`
+	AltDNS         string `json:"altdns"`
+	ConnectionType string `json:"connectiontype"`
+	Gateway        string `json:"gateway"`
+	WanIP          string `json:"wanip"`
+	WanMAC         string `json:"wanmac"`
+}
+
+type statusModulesResponse struct {
+	SystemInfo *systemInfoModule `json:"systemInfo"`
+}
+
+type systemInfoModule struct {
+	WanType         string `json:"wanType"`
+	WanConnectTime  string `json:"wanConnectTime"`
+	LanIP           string `json:"lanIP"`
+	MacHost         string `json:"macHost"`
+	SoftVersion     string `json:"softVersion"`
+	StatusWanDns1   string `json:"statusWanDns1"`
+	StatusWanDns2   string `json:"statusWanDns2"`
+	StatusWanGaterway string `json:"statusWanGaterway"`
+	StatusWanIP     string `json:"statusWanIP"`
+	StatusWanMAC    string `json:"statusWanMAC"`
+	StatusWanMask   string `json:"statusWanMask"`
+}
+
 type setQosResponse struct {
 	ErrCode string `json:"errCode"`
 }
@@ -344,11 +373,102 @@ func (c *RouterClient) RestoreConfig(path string) error {
 		return wrapTimeoutError(fmt.Errorf("restore: %w", err))
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if strings.Contains(string(body), `errCode":0`) || strings.Contains(string(body), `errCode":100`) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("restore: read response: %w", err)
+	}
+
+	var result struct {
+		ErrCode json.RawMessage `json:"errCode"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("restore: parse response: %w", err)
+	}
+
+	code := strings.Trim(string(result.ErrCode), `" `)
+	if code == "0" || code == "100" {
 		return nil
 	}
 	return fmt.Errorf("restore failed: server returned unexpected response")
+}
+
+func (c *RouterClient) GetFirmwareInfo() (*FirmwareInfo, error) {
+	status, err := c.getStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	info := &FirmwareInfo{}
+	if s := status.SystemInfo; s != nil {
+		info.ConnectionType = translateWanType(s.WanType)
+		info.Version = s.SoftVersion
+		info.DefaultDNS = s.StatusWanDns1
+		info.AltDNS = s.StatusWanDns2
+		info.Gateway = s.StatusWanGaterway
+		info.WanIP = s.StatusWanIP
+		info.WanMAC = s.StatusWanMAC
+		info.Uptime = formatUptime(s.WanConnectTime)
+	}
+
+	return info, nil
+}
+
+func (c *RouterClient) getStatus() (*statusModulesResponse, error) {
+	path := "/goform/getStatus?modules=systemInfo"
+	resp, err := c.get(path)
+	if err != nil {
+		return nil, fmt.Errorf("get status: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read status: %w", err)
+	}
+	var s statusModulesResponse
+	if err := json.Unmarshal(body, &s); err != nil {
+		return nil, fmt.Errorf("decode status: %w", err)
+	}
+	return &s, nil
+}
+
+func translateWanType(t string) string {
+	switch t {
+	case "dhcp":
+		return "Dynamic IP"
+	case "pppoe":
+		return "PPPoE"
+	default:
+		return "Static IP"
+	}
+}
+
+func formatUptime(secs string) string {
+	var total int
+	if _, err := fmt.Sscanf(secs, "%d", &total); err != nil {
+		return secs
+	}
+	if total <= 0 {
+		return ""
+	}
+	d := total / 86400
+	total %= 86400
+	h := total / 3600
+	total %= 3600
+	m := total / 60
+	s := total % 60
+
+	var parts strings.Builder
+	if d > 0 {
+		fmt.Fprintf(&parts, "%dd ", d)
+	}
+	if h > 0 {
+		fmt.Fprintf(&parts, "%dh ", h)
+	}
+	if m > 0 {
+		fmt.Fprintf(&parts, "%dm ", m)
+	}
+	fmt.Fprintf(&parts, "%ds", s)
+	return parts.String()
 }
 
 func (c *RouterClient) ExportSyslog() ([]byte, error) {

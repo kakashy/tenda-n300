@@ -57,6 +57,19 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 			w.Write([]byte("mock-config-data"))
 		case "/cgi-bin/DownloadSyslog/RouterSystem.log":
 			w.Write([]byte("mock-syslog-data"))
+		case "/goform/getStatus":
+			json.NewEncoder(w).Encode(statusModulesResponse{
+				SystemInfo: &systemInfoModule{
+					WanType:           "dhcp",
+					WanConnectTime:    "2743",
+					SoftVersion:       "V12.01.01.59_multi",
+					StatusWanDns1:     "8.8.8.8",
+					StatusWanDns2:     "8.8.4.4",
+					StatusWanGaterway: "10.0.0.1",
+					StatusWanIP:       "10.0.0.100",
+					StatusWanMAC:      "aa:bb:cc:dd:ee:ff",
+				},
+			})
 		case "/cgi-bin/UploadCfg":
 			w.Write([]byte(`{"errCode":0}`))
 		default:
@@ -274,6 +287,186 @@ func TestRestoreConfig(t *testing.T) {
 
 	if err := client.RestoreConfig("router_test.go"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRestoreConfigSpacedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/goform/getstok" {
+			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
+			return
+		}
+		if r.URL.Path == "/login/Auth" {
+			w.Header().Set("Location", "/index.html")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		if r.URL.Path == "/cgi-bin/UploadCfg" {
+			w.Write([]byte(`{"errCode": 0}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.RestoreConfig("router_test.go"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRestoreConfigFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/goform/getstok" {
+			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
+			return
+		}
+		if r.URL.Path == "/login/Auth" {
+			w.Header().Set("Location", "/index.html")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		if r.URL.Path == "/cgi-bin/UploadCfg" {
+			w.Write([]byte(`{"errCode": 1}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.RestoreConfig("router_test.go"); err == nil {
+		t.Fatal("expected error for errCode 1")
+	}
+}
+
+func TestGetFirmwareInfo(t *testing.T) {
+	srv := newTestServer(t, true)
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := client.GetFirmwareInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil {
+		t.Fatal("expected non-nil FirmwareInfo")
+	}
+	if info.Version != "V12.01.01.59_multi" {
+		t.Errorf("expected Version=V12.01.01.59_multi, got %s", info.Version)
+	}
+	if info.DefaultDNS != "8.8.8.8" {
+		t.Errorf("expected DefaultDNS=8.8.8.8, got %s", info.DefaultDNS)
+	}
+	if info.AltDNS != "8.8.4.4" {
+		t.Errorf("expected AltDNS=8.8.4.4, got %s", info.AltDNS)
+	}
+	if info.ConnectionType != "Dynamic IP" {
+		t.Errorf("expected ConnectionType='Dynamic IP', got %s", info.ConnectionType)
+	}
+	if info.Gateway != "10.0.0.1" {
+		t.Errorf("expected Gateway=10.0.0.1, got %s", info.Gateway)
+	}
+	if info.Uptime != "45m 43s" {
+		t.Errorf("expected Uptime='45m 43s', got %s", info.Uptime)
+	}
+	if info.WanIP != "10.0.0.100" {
+		t.Errorf("expected WanIP=10.0.0.100, got %s", info.WanIP)
+	}
+	if info.WanMAC != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("expected WanMAC=aa:bb:cc:dd:ee:ff, got %s", info.WanMAC)
+	}
+}
+
+func TestTranslateWanType(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"dhcp", "Dynamic IP"},
+		{"pppoe", "PPPoE"},
+		{"static", "Static IP"},
+		{"", "Static IP"},
+	}
+	for _, tc := range tests {
+		got := translateWanType(tc.in)
+		if got != tc.want {
+			t.Errorf("translateWanType(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestFormatUptime(t *testing.T) {
+	tests := []struct {
+		secs string
+		want string
+	}{
+		{"2743", "45m 43s"},
+		{"3661", "1h 1m 1s"},
+		{"86400", "1d 0s"},
+		{"0", ""},
+		{"", ""},
+		{"invalid", "invalid"},
+	}
+	for _, tc := range tests {
+		got := formatUptime(tc.secs)
+		if got != tc.want {
+			t.Errorf("formatUptime(%q) = %q, want %q", tc.secs, got, tc.want)
+		}
+	}
+}
+
+func TestGetFirmwareInfoAPIFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/goform/getstok" {
+			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
+			return
+		}
+		if r.URL.Path == "/login/Auth" {
+			w.Header().Set("Location", "/index.html")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.GetFirmwareInfo()
+	if err == nil {
+		t.Fatal("expected error when API fails")
 	}
 }
 
