@@ -51,6 +51,7 @@ type FirmwareInfo struct {
 	Model          string `json:"model"`
 	Version        string `json:"version"`
 	Hardware       string `json:"hardware"`
+	Uptime         string `json:"uptime"`
 	DefaultDNS     string `json:"defaultdns"`
 	AltDNS         string `json:"altdns"`
 	ConnectionType string `json:"connectiontype"`
@@ -383,25 +384,23 @@ func (c *RouterClient) RestoreConfig(path string) error {
 func (c *RouterClient) GetFirmwareInfo() *FirmwareInfo {
 	info := &FirmwareInfo{}
 
-	body, err := c.getLoginPage()
-	if err == nil {
-		info.Model = extractJSVar(body, "model_name")
-		info.Hardware = extractJSVar(body, "hardware_version")
-		info.Version = extractJSVar(body, "firmware_version")
+	body, err := c.getIndexPage()
+	if err != nil {
+		return info
 	}
 
-	if cfg, err := c.getInternetCfg(); err == nil {
-		info.DefaultDNS = cfg.DNSServer
-		info.AltDNS = cfg.DNSServer1
-		info.ConnectionType = strings.ToUpper(cfg.WanType)
-		info.Gateway = cfg.Gateway
-	}
+	info.ConnectionType = extractHTMLValue(body, "wanType")
+	info.Version = extractHTMLValue(body, "softVersion")
+	info.DefaultDNS = extractHTMLValue(body, "statusWanDns1")
+	info.AltDNS = extractHTMLValue(body, "statusWanDns2")
+	info.Gateway = extractHTMLValue(body, "statusWanGaterway")
+	info.Uptime = extractHTMLValue(body, "wanConnectTime")
 
 	return info
 }
 
-func (c *RouterClient) getLoginPage() ([]byte, error) {
-	resp, err := c.get("/login.html")
+func (c *RouterClient) getIndexPage() ([]byte, error) {
+	resp, err := c.get("/index.html")
 	if err != nil {
 		return nil, err
 	}
@@ -409,32 +408,28 @@ func (c *RouterClient) getLoginPage() ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func extractJSVar(html []byte, name string) string {
+func extractHTMLValue(html []byte, id string) string {
 	s := string(html)
-	prefixes := []string{
-		`var ` + name + `=`,
-		`var ` + name + ` = `,
+	prefix := `id="` + id + `"`
+	i := strings.Index(s, prefix)
+	if i == -1 {
+		return ""
 	}
-	for _, prefix := range prefixes {
-		i := strings.Index(s, prefix)
-		if i == -1 {
-			continue
-		}
-		start := i + len(prefix)
-		if start >= len(s) {
-			continue
-		}
-		quote := s[start]
-		if quote != '"' && quote != '\'' {
-			continue
-		}
-		end := strings.IndexByte(s[start+1:], byte(quote))
-		if end == -1 {
-			continue
-		}
-		return s[start+1 : start+1+end]
+	afterID := s[i+len(prefix):]
+	closeTag := strings.IndexByte(afterID, '>')
+	if closeTag == -1 {
+		return ""
 	}
-	return ""
+	afterGT := afterID[closeTag+1:]
+	end := strings.Index(afterGT, "</")
+	if end == -1 {
+		return ""
+	}
+	val := strings.TrimSpace(afterGT[:end])
+	if val == "-" {
+		return ""
+	}
+	return val
 }
 
 func (c *RouterClient) getInternetCfg() (*internetCfgResponse, error) {
