@@ -4,26 +4,50 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"text/tabwriter"
 	"time"
 )
 
 var (
-	jsonOutput bool
+	jsonOutput  bool
+	spinnerMu   sync.Mutex
 	spinnerStop chan struct{}
+	exitFunc    func(int) = os.Exit
 )
+
+func setupSignalHandler() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go handleSignals(sigCh)
+}
+
+func handleSignals(sigCh <-chan os.Signal) {
+	<-sigCh
+	stopSpinner()
+	exitFunc(130)
+}
 
 func startSpinner(msg string) {
 	if jsonOutput {
 		return
 	}
+	spinnerMu.Lock()
+	if spinnerStop != nil {
+		close(spinnerStop)
+	}
 	spinnerStop = make(chan struct{})
+	ch := spinnerStop
+	spinnerMu.Unlock()
+
 	go func() {
 		chars := []string{"|", "/", "-", "\\"}
 		i := 0
 		for {
 			select {
-			case <-spinnerStop:
+			case <-ch:
 				return
 			default:
 				fmt.Fprintf(os.Stderr, "\r%s %s ", chars[i%len(chars)], msg)
@@ -34,13 +58,26 @@ func startSpinner(msg string) {
 	}()
 }
 
+func spinnerActive() bool {
+	spinnerMu.Lock()
+	active := spinnerStop != nil
+	spinnerMu.Unlock()
+	return active
+}
+
 func stopSpinner() {
-	if jsonOutput || spinnerStop == nil {
+	if jsonOutput {
+		return
+	}
+	spinnerMu.Lock()
+	if spinnerStop == nil {
+		spinnerMu.Unlock()
 		return
 	}
 	close(spinnerStop)
-	fmt.Fprint(os.Stderr, "\r\033[K")
 	spinnerStop = nil
+	spinnerMu.Unlock()
+	fmt.Fprint(os.Stderr, "\r\033[K")
 }
 
 func printTable(header []string, rows [][]string) {
