@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	setupSignalHandler()
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `tenda-n300 — control your Tenda N300 router
 
