@@ -25,7 +25,7 @@ const bashCompletion = `_tenda_n300() {
     local cur prev words cword
     _init_completion || return
 
-    commands="devices block unblock firmwareinfo status reboot reset backup restore syslog discover config uninstall"
+    commands="devices block unblock firmwareinfo status reboot reset backup restore syslog ping discover config uninstall"
     config_subcommands="set"
 
     case $prev in
@@ -73,6 +73,7 @@ _tenda_n300() {
         'backup:download config backup'
         'restore:restore config from backup file'
         'syslog:export system log'
+        'ping:check if router is reachable and responsive'
 		'discover:scan network for Tenda routers'
 		'config:show or set configuration'
 		'uninstall:remove binary, config, and stored credentials'

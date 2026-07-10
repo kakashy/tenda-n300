@@ -479,3 +479,83 @@ func TestDefaultGatewayIP(t *testing.T) {
 		t.Fatalf("invalid IP from defaultGatewayIP: %s", ip)
 	}
 }
+
+func TestPingRouterReachable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login.html" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("login page"))
+			return
+		}
+		if r.URL.Path == "/goform/getstok" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"random":"abc"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	result := PingRouter(ip)
+
+	if !result.Reachable {
+		t.Fatal("expected router to be reachable")
+	}
+	if !result.APIAccess {
+		t.Fatal("expected API access to be true")
+	}
+	if result.Latency <= 0 {
+		t.Fatal("expected positive latency")
+	}
+	if result.Error != "" {
+		t.Fatalf("expected no error, got %s", result.Error)
+	}
+}
+
+func TestPingRouterUnreachable(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	ln.Close()
+
+	result := PingRouter(addr)
+
+	if result.Reachable {
+		t.Fatal("expected router to be unreachable")
+	}
+	if result.Error == "" {
+		t.Fatal("expected error for unreachable IP")
+	}
+	if result.Latency != 0 {
+		t.Fatal("expected zero latency when unreachable")
+	}
+}
+
+func TestPingRouterAPIFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login.html" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("login page"))
+			return
+		}
+		if r.URL.Path == "/goform/getstok" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	result := PingRouter(ip)
+
+	if !result.Reachable {
+		t.Fatal("expected router to be reachable")
+	}
+	if result.APIAccess {
+		t.Fatal("expected API access to be false when server returns 500")
+	}
+}

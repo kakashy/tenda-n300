@@ -166,3 +166,30 @@ func countAccess(devices []Device, allowed bool) int {
 	}
 	return n
 }
+
+func printPingResult(r *PingResult) {
+	if jsonOutput {
+		printJSON(map[string]any{
+			"reachable": r.Reachable,
+			"latency_ms": r.Latency.Milliseconds(),
+			"api_access": r.APIAccess,
+			"router_ip":  r.RouterIP,
+			"error":      r.Error,
+		})
+		return
+	}
+	if !r.Reachable {
+		fmt.Printf("router %s is not reachable\n", r.RouterIP)
+		if r.Error != "" {
+			fmt.Printf("error: %s\n", r.Error)
+		}
+		return
+	}
+	api := "yes"
+	if !r.APIAccess {
+		api = "no"
+	}
+	fmt.Printf("router %s is reachable\n", r.RouterIP)
+	fmt.Printf("latency:   %s\n", r.Latency.Round(time.Millisecond))
+	fmt.Printf("api:       %s\n", api)
+}

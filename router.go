@@ -81,6 +81,7 @@ type setQosResponse struct {
 }
 
 const clientTimeout = 10 * time.Second
+const pingTimeout = 5 * time.Second
 
 // wrapTimeoutError returns a user-friendly message if err is a network timeout.
 func wrapTimeoutError(err error) error {
@@ -482,4 +483,42 @@ func (c *RouterClient) ExportSyslog() ([]byte, error) {
 		return nil, err
 	}
 	return body, nil
+}
+
+type PingResult struct {
+	Reachable bool          `json:"reachable"`
+	Latency   time.Duration `json:"latency"`
+	APIAccess bool          `json:"api_access"`
+	RouterIP  string        `json:"router_ip"`
+	Error     string        `json:"error,omitempty"`
+}
+
+func PingRouter(ip string) *PingResult {
+	result := &PingResult{RouterIP: ip}
+	baseURL := fmt.Sprintf("http://%s", ip)
+
+	client := &http.Client{Timeout: pingTimeout}
+	start := time.Now()
+	resp, err := client.Get(baseURL + "/login.html")
+
+	if err != nil {
+		result.Error = wrapTimeoutError(err).Error()
+		return result
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	result.Latency = time.Since(start)
+	result.Reachable = true
+
+	req, _ := http.NewRequest("GET", baseURL+"/goform/getstok", nil)
+	req.Header.Set("User-Agent", "tenda-n300/1.0")
+	req.Header.Set("Referer", baseURL+"/index.html")
+	resp2, err := client.Do(req)
+	if err == nil {
+		io.Copy(io.Discard, resp2.Body)
+		resp2.Body.Close()
+		result.APIAccess = resp2.StatusCode == http.StatusOK
+	}
+
+	return result
 }

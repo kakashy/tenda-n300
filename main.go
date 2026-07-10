@@ -17,7 +17,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, `tenda-n300 — control your Tenda N300 router
 
 Usage:
-  tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
+	tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
 
 Commands:
   devices               List connected devices
@@ -30,6 +30,7 @@ Commands:
   backup [file]         Download config backup
   restore <file>        Restore config from backup file
   syslog [file]         Export system log
+  ping                  Check if router is reachable and responsive
   discover              Scan network for Tenda routers
   config                Show current config
   config set <key> <val>  Set config key (ip, password)
@@ -65,6 +66,8 @@ Flags:
 	switch args[0] {
 	case "discover":
 		cmdDiscover()
+	case "ping":
+		cmdPing(ip)
 	case "config":
 		cmdConfig(args[1:])
 	case "completion":
@@ -301,6 +304,29 @@ func cmdDiscover() {
 	for _, r := range routers {
 		fmt.Println(" ", r)
 	}
+}
+
+func cmdPing(ip string) {
+	if ip == "" {
+		cfg, err := LoadConfig()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "config error:", err)
+			os.Exit(1)
+		}
+		ip = cfg.IP
+	}
+	if ip == "" {
+		fmt.Fprintln(os.Stderr, "error: no router IP set (use --ip or `config set ip`)")
+		os.Exit(1)
+	}
+	if err := ValidateIPv4(ip); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+	startSpinner("pinging router")
+	result := PingRouter(ip)
+	stopSpinner()
+	printPingResult(result)
 }
 
 func cmdUninstall() {
