@@ -25,12 +25,15 @@ const bashCompletion = `_tenda_n300() {
     local cur prev words cword
     _init_completion || return
 
-    commands="devices block unblock firmwareinfo status reboot reset backup restore syslog ping discover config uninstall"
+    commands="devices block unblock firmwareinfo wifi status reboot reset backup restore syslog ping discover config uninstall"
     config_subcommands="set"
 
     case $prev in
         tenda-n300)
             COMPREPLY=($(compgen -W "$commands --ip --password --json" -- "$cur"))
+            ;;
+        wifi)
+            COMPREPLY=($(compgen -W "--ssid --wifi-password --channel --encrypt" -- "$cur"))
             ;;
         config)
             COMPREPLY=($(compgen -W "set" -- "$cur"))
@@ -67,6 +70,7 @@ _tenda_n300() {
         'block:block a device by MAC address'
         'unblock:unblock a device by MAC address'
         'firmwareinfo:show router firmware information'
+        'wifi:show or change WiFi settings (SSID, password, channel, encryption)'
         'status:show router summary'
         'reboot:reboot the router'
         'reset:factory reset router'
@@ -92,6 +96,13 @@ _tenda_n300() {
             ;;
         args)
             case $words[1] in
+                wifi)
+                    _values 'option' \
+                        '--ssid[new WiFi SSID]' \
+                        '--wifi-password[new WiFi password]' \
+                        '--channel[new WiFi channel (1-11)]' \
+                        '--encrypt[new WiFi encryption mode]'
+                    ;;
                 config)
                     if [[ $CURRENT -eq 3 ]]; then
                         _values 'subcommand' 'set'

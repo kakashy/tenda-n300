@@ -80,6 +80,30 @@ type setQosResponse struct {
 	ErrCode string `json:"errCode"`
 }
 
+type WiFiSettings struct {
+	SSID       string `json:"ssid"`
+	Password   string `json:"password"`
+	Channel    string `json:"channel"`
+	Encryption string `json:"encrypt"`
+	Band       string `json:"band,omitempty"`
+	WPS        string `json:"wps,omitempty"`
+	Broadcast  string `json:"broadcast,omitempty"`
+}
+
+type wifiResponse struct {
+	SSID       string `json:"ssid"`
+	Password   string `json:"password"`
+	Channel    string `json:"channel"`
+	Encryption string `json:"encrypt"`
+	Band       string `json:"band"`
+	WPS        string `json:"wps"`
+	Broadcast  string `json:"broadcast"`
+}
+
+type setWifiResponse struct {
+	ErrCode string `json:"errCode"`
+}
+
 const clientTimeout = 10 * time.Second
 const pingTimeout = 5 * time.Second
 
@@ -483,6 +507,65 @@ func (c *RouterClient) ExportSyslog() ([]byte, error) {
 		return nil, err
 	}
 	return body, nil
+}
+
+func (c *RouterClient) GetWiFiSettings() (*WiFiSettings, error) {
+	resp, err := c.get("/goform/getWifi")
+	if err != nil {
+		return nil, fmt.Errorf("getWifi: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read getWifi: %w", err)
+	}
+	var w wifiResponse
+	if err := json.Unmarshal(body, &w); err != nil {
+		return nil, fmt.Errorf("decode getWifi: %w", err)
+	}
+	return &WiFiSettings{
+		SSID:       w.SSID,
+		Password:   w.Password,
+		Channel:    w.Channel,
+		Encryption: w.Encryption,
+		Band:       w.Band,
+		WPS:        w.WPS,
+		Broadcast:  w.Broadcast,
+	}, nil
+}
+
+func (c *RouterClient) SetWiFiSettings(s *WiFiSettings) error {
+	if s == nil {
+		return fmt.Errorf("setWifi: settings cannot be nil")
+	}
+	if s.SSID == "" || s.Password == "" || s.Channel == "" || s.Encryption == "" {
+		return fmt.Errorf("setWifi: SSID, password, channel, and encryption are required")
+	}
+	// Note: "SSID" is uppercase to match the Tenda goform API field name.
+	// All other fields (password, channel, encrypt) are lowercase as the router expects.
+	data := url.Values{
+		"SSID":     {s.SSID},
+		"password": {s.Password},
+		"channel":  {s.Channel},
+		"encrypt":  {s.Encryption},
+	}
+	resp, err := c.post("/goform/setWifi", data)
+	if err != nil {
+		return fmt.Errorf("setWifi: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read setWifi: %w", err)
+	}
+	var res setWifiResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		return fmt.Errorf("decode setWifi: %w", err)
+	}
+	if res.ErrCode != "0" {
+		return fmt.Errorf("setWifi rejected, errCode: %s", res.ErrCode)
+	}
+	return nil
 }
 
 type PingResult struct {

@@ -25,6 +25,18 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"errCode":"1"}`))
 			}
+		case "/goform/getWifi":
+			json.NewEncoder(w).Encode(wifiResponse{
+				SSID:       "Tenda_N300",
+				Password:   "secret123",
+				Channel:    "6",
+				Encryption: "WPA2PSK/AES",
+				Band:       "1",
+				WPS:        "0",
+				Broadcast:  "1",
+			})
+		case "/goform/setWifi":
+			json.NewEncoder(w).Encode(setWifiResponse{ErrCode: "0"})
 		case "/goform/getQos":
 			json.NewEncoder(w).Encode(qosResponse{
 				OnlineList: []qosDevice{
@@ -557,5 +569,213 @@ func TestPingRouterAPIFails(t *testing.T) {
 	}
 	if result.APIAccess {
 		t.Fatal("expected API access to be false when server returns 500")
+	}
+}
+
+func TestGetWiFiSettings(t *testing.T) {
+	srv := newTestServer(t, true)
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wifi, err := client.GetWiFiSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wifi.SSID != "Tenda_N300" {
+		t.Errorf("expected SSID=Tenda_N300, got %s", wifi.SSID)
+	}
+	if wifi.Channel != "6" {
+		t.Errorf("expected Channel=6, got %s", wifi.Channel)
+	}
+	if wifi.Encryption != "WPA2PSK/AES" {
+		t.Errorf("expected Encryption=WPA2PSK/AES, got %s", wifi.Encryption)
+	}
+	if wifi.Password != "secret123" {
+		t.Errorf("expected Password=secret123, got %s", wifi.Password)
+	}
+}
+
+func TestGetWiFiSettingsAPIFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/goform/getstok" {
+			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
+			return
+		}
+		if r.URL.Path == "/login/Auth" {
+			w.Header().Set("Location", "/index.html")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.GetWiFiSettings()
+	if err == nil {
+		t.Fatal("expected error when WiFi API endpoint is missing")
+	}
+}
+
+func TestSetWiFiSettings(t *testing.T) {
+	srv := newTestServer(t, true)
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	settings := &WiFiSettings{
+		SSID:       "MyNetwork",
+		Password:   "newpass123",
+		Channel:    "11",
+		Encryption: "WPA2PSK/TKIP",
+	}
+
+	if err := client.SetWiFiSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSetWiFiSettingsInvalid(t *testing.T) {
+	srv := newTestServer(t, true)
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	settings := &WiFiSettings{}
+	if err := client.SetWiFiSettings(settings); err == nil {
+		t.Fatal("expected error for empty WiFi settings")
+	}
+}
+
+func TestSetWiFiSettingsNil(t *testing.T) {
+	srv := newTestServer(t, true)
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.SetWiFiSettings(nil); err == nil {
+		t.Fatal("expected error for nil settings")
+	}
+}
+
+func TestSetWiFiRejected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/goform/getstok" {
+			json.NewEncoder(w).Encode(stokResponse{Random: "test123"})
+			return
+		}
+		if r.URL.Path == "/index.html" {
+			w.Write([]byte("ok"))
+			return
+		}
+		if r.URL.Path == "/login/Auth" {
+			w.Header().Set("Location", "/index.html")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		if r.URL.Path == "/goform/setWifi" {
+			json.NewEncoder(w).Encode(setWifiResponse{ErrCode: "1"})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	ip := strings.TrimPrefix(srv.URL, "http://")
+	client, err := NewRouterClient(ip, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	settings := &WiFiSettings{
+		SSID:       "Test",
+		Password:   "pass123",
+		Channel:    "6",
+		Encryption: "WPA2PSK/AES",
+	}
+	if err := client.SetWiFiSettings(settings); err == nil {
+		t.Fatal("expected error when router rejects settings")
+	}
+}
+
+func TestSetWifiResponse(t *testing.T) {
+	tests := []struct {
+		json string
+		want string
+	}{
+		{`{"errCode":"0"}`, "0"},
+		{`{"errCode":"1"}`, "1"},
+	}
+	for _, tc := range tests {
+		var res setWifiResponse
+		if err := json.Unmarshal([]byte(tc.json), &res); err != nil {
+			t.Fatal(err)
+		}
+		if res.ErrCode != tc.want {
+			t.Fatalf("expected errCode %s, got %s", tc.want, res.ErrCode)
+		}
+	}
+}
+
+func TestWiFiSettingsJSONParse(t *testing.T) {
+	raw := `{
+		"ssid": "HomeNetwork",
+		"password": "pass1234",
+		"channel": "1",
+		"encrypt": "WPA2PSK/AES",
+		"band": "1",
+		"wps": "0",
+		"broadcast": "1"
+	}`
+	var ws wifiResponse
+	if err := json.Unmarshal([]byte(raw), &ws); err != nil {
+		t.Fatal(err)
+	}
+	if ws.SSID != "HomeNetwork" {
+		t.Errorf("expected SSID=HomeNetwork, got %s", ws.SSID)
+	}
+	if ws.Channel != "1" {
+		t.Errorf("expected Channel=1, got %s", ws.Channel)
+	}
+	if ws.Encryption != "WPA2PSK/AES" {
+		t.Errorf("expected Encryption=WPA2PSK/AES, got %s", ws.Encryption)
+	}
+	if ws.Password != "pass1234" {
+		t.Errorf("expected Password=pass1234, got %s", ws.Password)
+	}
+	if ws.Band != "1" {
+		t.Errorf("expected Band=1, got %s", ws.Band)
+	}
+	if ws.WPS != "0" {
+		t.Errorf("expected WPS=0, got %s", ws.WPS)
+	}
+	if ws.Broadcast != "1" {
+		t.Errorf("expected Broadcast=1, got %s", ws.Broadcast)
 	}
 }

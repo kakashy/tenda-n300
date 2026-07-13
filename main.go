@@ -25,6 +25,10 @@ Commands:
   unblock <mac>         Unblock a device by MAC address
   firmwareinfo          Show router firmware information
   status                Show router summary
+  wifi                  Show WiFi settings (SSID, password, channel, encryption)
+  wifi --ssid <name> --wifi-password <pass> --channel <n> --encrypt <mode>
+                        Change WiFi settings (any combination)
+
   reboot                Reboot the router
   reset                 Factory reset router (wipes all config)
   backup [file]         Download config backup
@@ -41,6 +45,10 @@ Flags:
   --ip <addr>        Router IP address (overrides config)
   --password <pass>  Router admin password (overrides config)
   --json             Output as JSON (machine-readable)
+  --ssid <name>           New WiFi SSID (for wifi command)
+  --wifi-password <pass>  New WiFi password (for wifi command)
+  --channel <n>           New WiFi channel (1-11) (for wifi command)
+  --encrypt <mode>        New WiFi encryption mode (for wifi command)
 `)
 	}
 
@@ -74,9 +82,61 @@ Flags:
 		cmdCompletion(args[1:])
 	case "uninstall":
 		cmdUninstall()
-	case "devices", "status", "firmwareinfo", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
+	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
 		client := connectRouter(ip, password)
 		switch args[0] {
+		case "wifi":
+			wifiFlags := flag.NewFlagSet("wifi", flag.ExitOnError)
+			wifiSSID := wifiFlags.String("ssid", "", "new WiFi SSID")
+			wifiPassword := wifiFlags.String("wifi-password", "", "new WiFi password")
+			wifiChannel := wifiFlags.String("channel", "", "new WiFi channel (1-11)")
+			wifiEncrypt := wifiFlags.String("encrypt", "", "new WiFi encryption mode")
+			wifiFlags.Parse(args[1:])
+
+			hasChanges := *wifiSSID != "" || *wifiPassword != "" || *wifiChannel != "" || *wifiEncrypt != ""
+
+			if !hasChanges {
+				startSpinner("fetching WiFi settings")
+				settings, err := client.GetWiFiSettings()
+				stopSpinner()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "error:", err)
+					os.Exit(1)
+				}
+				printWiFiSettings(settings)
+			} else {
+				startSpinner("fetching current WiFi settings")
+				current, err := client.GetWiFiSettings()
+				stopSpinner()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "error:", err)
+					os.Exit(1)
+				}
+				if *wifiSSID != "" {
+					current.SSID = *wifiSSID
+				}
+				if *wifiPassword != "" {
+					current.Password = *wifiPassword
+				}
+				if *wifiChannel != "" {
+					current.Channel = *wifiChannel
+				}
+				if *wifiEncrypt != "" {
+					current.Encryption = *wifiEncrypt
+				}
+				startSpinner("updating WiFi settings")
+				err = client.SetWiFiSettings(current)
+				stopSpinner()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "error:", err)
+					os.Exit(1)
+				}
+				if jsonOutput {
+					printJSON(map[string]string{"status": "ok"})
+				} else {
+					fmt.Println("WiFi settings updated")
+				}
+			}
 		case "devices":
 			startSpinner("fetching devices")
 			devices, err := client.GetDevices()

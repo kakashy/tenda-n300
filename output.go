@@ -167,6 +167,20 @@ func countAccess(devices []Device, allowed bool) int {
 	return n
 }
 
+func printWiFiSettings(s *WiFiSettings) {
+	if jsonOutput {
+		printJSON(s)
+		return
+	}
+	fmt.Printf("SSID:       %s\n", s.SSID)
+	fmt.Printf("Password:   %s\n", s.Password)
+	fmt.Printf("Channel:    %s\n", s.Channel)
+	fmt.Printf("Encryption: %s\n", s.Encryption)
+	fmt.Printf("Band:       %s\n", s.Band)
+	fmt.Printf("WPS:        %s\n", s.WPS)
+	fmt.Printf("Broadcast:  %s\n", s.Broadcast)
+}
+
 func printPingResult(r *PingResult) {
 	if jsonOutput {
 		printJSON(map[string]any{
