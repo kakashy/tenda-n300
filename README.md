@@ -8,6 +8,7 @@ A command-line tool for controlling a **Tenda N300** wireless router from your t
 
 - **List devices** — view all connected and blocked devices on the network
 - **Block / unblock** — restrict internet access for any device by MAC address
+- **WiFi settings** — view or change SSID, password, channel, and encryption mode
 - **Reboot** — restart the router remotely
 - **Factory reset** — wipe all router settings (with interactive confirmation)
 - **Backup / restore** — save and reload router configuration
@@ -88,6 +89,8 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
 | `devices`              | List connected and blocked devices                             |
 | `block <mac>`          | Block a device by MAC address                                  |
 | `unblock <mac>`        | Unblock a device by MAC address                                |
+| `wifi`                 | Show current WiFi settings (SSID, password, channel, encryption) |
+| `wifi --ssid <n> --wifi-password <p> --channel <c> --encrypt <e>` | Change WiFi settings (any combination of flags) |
 | `status`               | Show router summary (total / online / blocked)                 |
 | `reboot`               | Reboot the router                                              |
 | `reset`                | Factory reset (wipes all config — requires `yes` confirmation) |
@@ -101,11 +104,15 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
 
 ### Flags
 
-| Flag                | Description                              |
-| ------------------- | ---------------------------------------- |
-| `--ip <addr>`       | Router IP address (overrides config)     |
-| `--password <pass>` | Router admin password (overrides config) |
-| `--json`            | Output in JSON format                    |
+| Flag                      | Description                              |
+| ------------------------- | ---------------------------------------- |
+| `--ip <addr>`             | Router IP address (overrides config)     |
+| `--password <pass>`       | Router admin password (overrides config) |
+| `--json`                  | Output in JSON format                    |
+| `--ssid <name>`           | New WiFi SSID (for `wifi` command)       |
+| `--wifi-password <pass>`  | New WiFi password (for `wifi` command)   |
+| `--channel <n>`           | New WiFi channel 1-11 (for `wifi` command) |
+| `--encrypt <mode>`        | New WiFi encryption mode (for `wifi` command) |
 
 ### Examples
 
@@ -118,6 +125,15 @@ tenda-n300 --ip 192.168.0.1 --password admin reboot
 
 # Save syslog to a file
 tenda-n300 syslog /tmp/router.log
+
+# Show current WiFi settings
+tenda-n300 wifi
+
+# Change WiFi SSID and password
+tenda-n300 wifi --ssid "MyNetwork" --wifi-password "newpass123"
+
+# Change WiFi channel to 11 with WPA2 encryption
+tenda-n300 wifi --channel 11 --encrypt "WPA2PSK/AES"
 ```
 
 ## How it works
