@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var version = "dev"
+
 func main() {
 	setupSignalHandler()
 
@@ -40,6 +42,7 @@ Commands:
   config set <key> <val>  Set config key (ip, password)
   uninstall             Remove binary, config, and stored credentials
   completion bash|zsh    Generate shell completion script
+  version               Show version
 
 Flags:
   --ip <addr>        Router IP address (overrides config)
@@ -54,10 +57,16 @@ Flags:
 
 	var ip string
 	var password string
+	showVersion := flag.Bool("version", false, "show version")
 	flag.BoolVar(&jsonOutput, "json", false, "output as JSON")
 	flag.StringVar(&ip, "ip", "", "router IP address")
 	flag.StringVar(&password, "password", "", "router admin password")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("tenda-n300", version)
+		os.Exit(0)
+	}
 
 	args := flag.Args()
 	if len(args) == 0 {
@@ -72,6 +81,8 @@ Flags:
 	}
 
 	switch args[0] {
+	case "version":
+		fmt.Println("tenda-n300", version)
 	case "discover":
 		cmdDiscover()
 	case "ping":
@@ -83,6 +94,12 @@ Flags:
 	case "uninstall":
 		cmdUninstall()
 	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
+		for _, a := range args[1:] {
+			if a == "--help" || a == "-h" {
+				printSubcommandHelp(args[0])
+				os.Exit(0)
+			}
+		}
 		client := connectRouter(ip, password)
 		switch args[0] {
 		case "wifi":
@@ -486,6 +503,22 @@ func cmdUninstall() {
 }
 
 func cmdConfig(args []string) {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			fmt.Fprintf(os.Stderr, `Usage: tenda-n300 config [set <key> <value>]
+
+Show or set configuration.
+
+Subcommands:
+  set <key> <value>  Set a config key (ip, password)
+
+Keys:
+  ip        Router IP address
+  password  Router admin password (stored in OS keyring)
+`)
+			os.Exit(0)
+		}
+	}
 	if len(args) == 0 {
 		cfg, err := LoadConfig()
 		if err != nil {
@@ -547,5 +580,26 @@ func cmdConfig(args []string) {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown config subcommand: %s\n", args[0])
 		os.Exit(1)
+	}
+}
+
+func printSubcommandHelp(cmd string) {
+	help := map[string]string{
+		"devices":      "Usage: tenda-n300 devices\n\nList all connected devices with their MAC addresses, hostnames, and IPs.",
+		"block":        "Usage: tenda-n300 block <mac> [mac2 ...]\n\nBlock one or more devices by MAC address.",
+		"unblock":      "Usage: tenda-n300 unblock <mac> [mac2 ...]\n\nUnblock one or more devices by MAC address.",
+		"firmwareinfo": "Usage: tenda-n300 firmwareinfo\n\nShow router firmware information.",
+		"wifi":         "Usage: tenda-n300 wifi [--ssid <name>] [--wifi-password <pass>] [--channel <n>] [--encrypt <mode>]\n\nShow WiFi settings. Pass flags to change settings (any combination).",
+		"status":       "Usage: tenda-n300 status\n\nShow router summary with connected devices.",
+		"reboot":       "Usage: tenda-n300 reboot\n\nReboot the router.",
+		"reset":        "Usage: tenda-n300 reset\n\nFactory reset router (wipes all config). Prompts for confirmation.",
+		"backup":       "Usage: tenda-n300 backup [file]\n\nDownload config backup. Defaults to RouterCfm.cfg.",
+		"restore":      "Usage: tenda-n300 restore <file>\n\nRestore config from a backup file.",
+		"syslog":       "Usage: tenda-n300 syslog [file]\n\nExport system log. Writes to file if given, otherwise stdout.",
+	}
+	if h, ok := help[cmd]; ok {
+		fmt.Fprintln(os.Stderr, h)
+	} else {
+		fmt.Fprintf(os.Stderr, "no help available for %s\n", cmd)
 	}
 }

@@ -25,18 +25,21 @@ const bashCompletion = `_tenda_n300() {
     local cur prev words cword
     _init_completion || return
 
-    commands="devices block unblock firmwareinfo wifi status reboot reset backup restore syslog ping discover config uninstall"
+    commands="devices block unblock firmwareinfo wifi status reboot reset backup restore syslog ping discover config uninstall completion version"
     config_subcommands="set"
 
     case $prev in
         tenda-n300)
-            COMPREPLY=($(compgen -W "$commands --ip --password --json" -- "$cur"))
+            COMPREPLY=($(compgen -W "$commands --ip --password --json --version" -- "$cur"))
             ;;
         wifi)
-            COMPREPLY=($(compgen -W "--ssid --wifi-password --channel --encrypt" -- "$cur"))
+            COMPREPLY=($(compgen -W "--ssid --wifi-password --channel --encrypt --help" -- "$cur"))
             ;;
         config)
-            COMPREPLY=($(compgen -W "set" -- "$cur"))
+            COMPREPLY=($(compgen -W "set --help" -- "$cur"))
+            ;;
+        completion)
+            COMPREPLY=($(compgen -W "bash zsh" -- "$cur"))
             ;;
         set)
             COMPREPLY=($(compgen -W "ip password" -- "$cur"))
@@ -53,7 +56,7 @@ const bashCompletion = `_tenda_n300() {
             ;;
         *)
             if [[ $cur == -* ]]; then
-                COMPREPLY=($(compgen -W "--ip --password --json" -- "$cur"))
+                COMPREPLY=($(compgen -W "--ip --password --json --version" -- "$cur"))
             fi
             ;;
     esac
@@ -81,12 +84,15 @@ _tenda_n300() {
 		'discover:scan network for Tenda routers'
 		'config:show or set configuration'
 		'uninstall:remove binary, config, and stored credentials'
+		'completion:generate shell completion script'
+		'version:show version'
     )
 
     _arguments -C \
         '--ip[router IP address]' \
         '--password[router admin password]' \
         '--json[output as JSON]' \
+        '--version[show version]' \
         '1:command:->cmds' \
         '*::args:->args'
 
@@ -112,6 +118,9 @@ _tenda_n300() {
                     ;;
                 block|unblock)
                     _message 'MAC address (e.g. aa:bb:cc:dd:ee:ff) — accepts multiple'
+                    ;;
+                completion)
+                    _values 'shell' 'bash' 'zsh'
                     ;;
                 backup|syslog|restore)
                     _files
