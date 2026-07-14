@@ -21,8 +21,8 @@ Usage:
 
 Commands:
   devices               List connected devices
-  block <mac>           Block a device by MAC address
-  unblock <mac>         Unblock a device by MAC address
+  block <mac> [mac2 ...]  Block one or more devices by MAC address
+  unblock <mac> [mac2 ...]  Unblock one or more devices by MAC address
   firmwareinfo          Show router firmware information
   status                Show router summary
   wifi                  Show WiFi settings (SSID, password, channel, encryption)
@@ -166,33 +166,65 @@ Flags:
 			printStatus(devices)
 		case "block":
 			if len(args) < 2 {
-				fmt.Fprintln(os.Stderr, "usage: tenda-n300 block <mac>")
+				fmt.Fprintln(os.Stderr, "usage: tenda-n300 block <mac> [mac2 mac3 ...]")
 				os.Exit(1)
 			}
-			mac := args[1]
-			if err := client.BlockMAC(mac); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
-				os.Exit(1)
-			}
+			macs := args[1:]
+			var blockFailed bool
 			if jsonOutput {
-				printJSON(map[string]string{"status": "ok", "mac": mac, "action": "block"})
+				var results []map[string]string
+				for _, mac := range macs {
+					if err := client.BlockMAC(mac); err != nil {
+						blockFailed = true
+						results = append(results, map[string]string{"status": "error", "mac": mac, "error": err.Error()})
+					} else {
+						results = append(results, map[string]string{"status": "ok", "mac": mac, "action": "block"})
+					}
+				}
+				printJSON(results)
 			} else {
-				fmt.Printf("blocked %s\n", mac)
+				for _, mac := range macs {
+					if err := client.BlockMAC(mac); err != nil {
+						blockFailed = true
+						fmt.Fprintf(os.Stderr, "error blocking %s: %v\n", mac, err)
+					} else {
+						fmt.Printf("blocked %s\n", mac)
+					}
+				}
+			}
+			if blockFailed {
+				os.Exit(1)
 			}
 		case "unblock":
 			if len(args) < 2 {
-				fmt.Fprintln(os.Stderr, "usage: tenda-n300 unblock <mac>")
+				fmt.Fprintln(os.Stderr, "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]")
 				os.Exit(1)
 			}
-			mac := args[1]
-			if err := client.UnblockMAC(mac); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
-				os.Exit(1)
-			}
+			macs := args[1:]
+			var unblockFailed bool
 			if jsonOutput {
-				printJSON(map[string]string{"status": "ok", "mac": mac, "action": "unblock"})
+				var results []map[string]string
+				for _, mac := range macs {
+					if err := client.UnblockMAC(mac); err != nil {
+						unblockFailed = true
+						results = append(results, map[string]string{"status": "error", "mac": mac, "error": err.Error()})
+					} else {
+						results = append(results, map[string]string{"status": "ok", "mac": mac, "action": "unblock"})
+					}
+				}
+				printJSON(results)
 			} else {
-				fmt.Printf("unblocked %s\n", mac)
+				for _, mac := range macs {
+					if err := client.UnblockMAC(mac); err != nil {
+						unblockFailed = true
+						fmt.Fprintf(os.Stderr, "error unblocking %s: %v\n", mac, err)
+					} else {
+						fmt.Printf("unblocked %s\n", mac)
+					}
+				}
+			}
+			if unblockFailed {
+				os.Exit(1)
 			}
 
 		case "reboot":

@@ -42,7 +42,7 @@ const bashCompletion = `_tenda_n300() {
             COMPREPLY=($(compgen -W "ip password" -- "$cur"))
             ;;
         block|unblock)
-            # suggest MAC addresses from devices output
+            # suggest MAC addresses from devices output (accepts multiple)
             COMPREPLY=()
             ;;
         backup|syslog)
@@ -67,8 +67,8 @@ _tenda_n300() {
     local -a commands
     commands=(
         'devices:list connected devices'
-        'block:block a device by MAC address'
-        'unblock:unblock a device by MAC address'
+		'block:block one or more devices by MAC address'
+		'unblock:unblock one or more devices by MAC address'
         'firmwareinfo:show router firmware information'
         'wifi:show or change WiFi settings (SSID, password, channel, encryption)'
         'status:show router summary'
@@ -111,7 +111,7 @@ _tenda_n300() {
                     fi
                     ;;
                 block|unblock)
-                    _message 'MAC address (e.g. aa:bb:cc:dd:ee:ff)'
+                    _message 'MAC address (e.g. aa:bb:cc:dd:ee:ff) — accepts multiple'
                     ;;
                 backup|syslog|restore)
                     _files
