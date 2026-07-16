@@ -48,6 +48,9 @@ func LoadConfig() (*Config, error) {
 		}
 		return nil, err
 	}
+	if len(data) == 0 {
+		return &Config{}, nil
+	}
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, err
