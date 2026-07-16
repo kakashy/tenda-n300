@@ -64,7 +64,11 @@ Flags:
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("tenda-n300", version)
+		if jsonOutput {
+			printJSON(map[string]string{"version": version})
+		} else {
+			fmt.Println("tenda-n300", version)
+		}
 		os.Exit(0)
 	}
 
@@ -75,14 +79,18 @@ Flags:
 	}
 	if ip != "" {
 		if err := ValidateIPv4(ip); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
+			printError("%v", err)
 			os.Exit(1)
 		}
 	}
 
 	switch args[0] {
 	case "version":
-		fmt.Println("tenda-n300", version)
+		if jsonOutput {
+			printJSON(map[string]string{"version": version})
+		} else {
+			fmt.Println("tenda-n300", version)
+		}
 	case "discover":
 		cmdDiscover()
 	case "ping":
@@ -117,7 +125,7 @@ Flags:
 				settings, err := client.GetWiFiSettings()
 				stopSpinner()
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "error:", err)
+					printError("%v", err)
 					os.Exit(1)
 				}
 				printWiFiSettings(settings)
@@ -126,7 +134,7 @@ Flags:
 				current, err := client.GetWiFiSettings()
 				stopSpinner()
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "error:", err)
+					printError("%v", err)
 					os.Exit(1)
 				}
 				if *wifiSSID != "" {
@@ -145,7 +153,7 @@ Flags:
 				err = client.SetWiFiSettings(current)
 				stopSpinner()
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "error:", err)
+					printError("%v", err)
 					os.Exit(1)
 				}
 				if jsonOutput {
@@ -159,7 +167,7 @@ Flags:
 			devices, err := client.GetDevices()
 			stopSpinner()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			printDeviceTable(devices)
@@ -168,7 +176,7 @@ Flags:
 			info, err := client.GetFirmwareInfo()
 			stopSpinner()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			printFirmwareInfo(info)
@@ -177,13 +185,17 @@ Flags:
 			devices, err := client.GetDevices()
 			stopSpinner()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			printStatus(devices)
 		case "block":
 			if len(args) < 2 {
-				fmt.Fprintln(os.Stderr, "usage: tenda-n300 block <mac> [mac2 mac3 ...]")
+				if jsonOutput {
+					printJSON(map[string]string{"error": "usage: tenda-n300 block <mac> [mac2 mac3 ...]"})
+				} else {
+					fmt.Fprintln(os.Stderr, "usage: tenda-n300 block <mac> [mac2 mac3 ...]")
+				}
 				os.Exit(1)
 			}
 			macs := args[1:]
@@ -214,7 +226,11 @@ Flags:
 			}
 		case "unblock":
 			if len(args) < 2 {
-				fmt.Fprintln(os.Stderr, "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]")
+				if jsonOutput {
+					printJSON(map[string]string{"error": "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]"})
+				} else {
+					fmt.Fprintln(os.Stderr, "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]")
+				}
 				os.Exit(1)
 			}
 			macs := args[1:]
@@ -246,10 +262,14 @@ Flags:
 
 		case "reboot":
 			if err := client.Reboot(); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
-			fmt.Println("rebooting...")
+			if jsonOutput {
+				printJSON(map[string]string{"status": "ok"})
+			} else {
+				fmt.Println("rebooting...")
+			}
 
 		case "reset":
 			if !jsonOutput {
@@ -261,17 +281,21 @@ Flags:
 				}
 			}
 			if err := client.Reset(); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
-			fmt.Println("resetting to factory defaults...")
+			if jsonOutput {
+				printJSON(map[string]string{"status": "ok"})
+			} else {
+				fmt.Println("resetting to factory defaults...")
+			}
 
 		case "backup":
 			startSpinner("downloading config")
 			data, err := client.BackupConfig()
 			stopSpinner()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			dest := "RouterCfm.cfg"
@@ -279,44 +303,66 @@ Flags:
 				dest = args[1]
 			}
 			if err := os.WriteFile(dest, data, 0644); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
-			fmt.Printf("config saved to %s\n", dest)
+			if jsonOutput {
+				printJSON(map[string]string{"status": "ok", "file": dest})
+			} else {
+				fmt.Printf("config saved to %s\n", dest)
+			}
 
 		case "restore":
 			if len(args) < 2 {
-				fmt.Fprintln(os.Stderr, "usage: tenda-n300 restore <file>")
+				if jsonOutput {
+					printJSON(map[string]string{"error": "usage: tenda-n300 restore <file>"})
+				} else {
+					fmt.Fprintln(os.Stderr, "usage: tenda-n300 restore <file>")
+				}
 				os.Exit(1)
 			}
 			if err := client.RestoreConfig(args[1]); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
-			fmt.Println("config restored, rebooting...")
+			if jsonOutput {
+				printJSON(map[string]string{"status": "ok"})
+			} else {
+				fmt.Println("config restored, rebooting...")
+			}
 
 		case "syslog":
 			startSpinner("downloading syslog")
 			data, err := client.ExportSyslog()
 			stopSpinner()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			if len(args) > 1 {
 				dest := args[1]
 				if err := os.WriteFile(dest, data, 0644); err != nil {
-					fmt.Fprintln(os.Stderr, "error:", err)
+					printError("%v", err)
 					os.Exit(1)
 				}
-				fmt.Printf("syslog saved to %s\n", dest)
+				if jsonOutput {
+					printJSON(map[string]string{"status": "ok", "file": dest})
+				} else {
+					fmt.Printf("syslog saved to %s\n", dest)
+				}
 			} else {
-				os.Stdout.Write(data)
+				if jsonOutput {
+					printJSON(map[string]any{"status": "ok", "data": string(data)})
+				} else {
+					os.Stdout.Write(data)
+				}
 			}
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
-		flag.Usage()
+		printError("unknown command: %s", args[0])
+		if !jsonOutput {
+			flag.Usage()
+		}
 		os.Exit(1)
 	}
 }
@@ -325,14 +371,14 @@ func connectRouter(ip, password string) *RouterClient {
 	if ip == "" || password == "" {
 		cfg, err := LoadConfig()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "config error:", err)
+			printError("config error: %v", err)
 			os.Exit(1)
 		}
 		if ip == "" {
 			ip = cfg.IP
 			if ip != "" {
 				if err := ValidateIPv4(ip); err != nil {
-					fmt.Fprintln(os.Stderr, "error: invalid IP in config:", err)
+					printError("invalid IP in config: %v", err)
 					os.Exit(1)
 				}
 			}
@@ -340,7 +386,10 @@ func connectRouter(ip, password string) *RouterClient {
 		if password == "" {
 			password, err = keyringGetPassword()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "config error: no password set\n  set it:  tenda-n300 config set password <pass>\n  or run:   tenda-n300 --password <pass> <command>\n")
+				printError("no password set")
+				if !jsonOutput {
+					fmt.Fprintf(os.Stderr, "  set it:  tenda-n300 config set password <pass>\n  or run:   tenda-n300 --password <pass> <command>\n")
+				}
 				os.Exit(1)
 			}
 		}
@@ -348,7 +397,7 @@ func connectRouter(ip, password string) *RouterClient {
 	if ip == "" {
 		guess := "192.168.0.1"
 		if jsonOutput {
-			fmt.Fprintf(os.Stderr, "config error: no IP set\n")
+			printError("no IP set")
 			os.Exit(1)
 		}
 		fmt.Printf("Router IP not set. Try %s? [Y/n]: ", guess)
@@ -372,22 +421,22 @@ func connectRouter(ip, password string) *RouterClient {
 			fmt.Print("Enter router IP: ")
 			fmt.Scanln(&ip)
 			if ip == "" {
-				fmt.Fprintln(os.Stderr, "no IP provided")
+				printError("no IP provided")
 				os.Exit(1)
 			}
 			if err := ValidateIPv4(ip); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 		}
 	}
 	if password == "" {
-		fmt.Fprintln(os.Stderr, "error: router password required (use --password or `config set password`)")
+		printError("router password required (use --password or `config set password`)")
 		os.Exit(1)
 	}
 	client, err := NewRouterClient(ip, password)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "login failed:", err)
+		printError("login failed: %v", err)
 		os.Exit(1)
 	}
 	return client
@@ -398,7 +447,7 @@ func cmdDiscover() {
 	routers, err := discoverRouters()
 	stopSpinner()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "discovery error:", err)
+		printError("discovery error: %v", err)
 		os.Exit(1)
 	}
 	if jsonOutput {
@@ -419,17 +468,17 @@ func cmdPing(ip string) {
 	if ip == "" {
 		cfg, err := LoadConfig()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "config error:", err)
+			printError("config error: %v", err)
 			os.Exit(1)
 		}
 		ip = cfg.IP
 	}
 	if ip == "" {
-		fmt.Fprintln(os.Stderr, "error: no router IP set (use --ip or `config set ip`)")
+		printError("no router IP set (use --ip or `config set ip`)")
 		os.Exit(1)
 	}
 	if err := ValidateIPv4(ip); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		printError("%v", err)
 		os.Exit(1)
 	}
 	startSpinner("pinging router")
@@ -492,14 +541,22 @@ func cmdUninstall() {
 	}
 
 	if len(errs) > 0 {
-		fmt.Fprintln(os.Stderr, "uninstall completed with errors:")
-		for _, e := range errs {
-			fmt.Fprintln(os.Stderr, "  -", e)
+		if jsonOutput {
+			printJSON(map[string]any{"status": "error", "errors": errs})
+		} else {
+			fmt.Fprintln(os.Stderr, "uninstall completed with errors:")
+			for _, e := range errs {
+				fmt.Fprintln(os.Stderr, "  -", e)
+			}
 		}
 		os.Exit(1)
 	}
 
-	fmt.Println("uninstalled")
+	if jsonOutput {
+		printJSON(map[string]string{"status": "ok"})
+	} else {
+		fmt.Println("uninstalled")
+	}
 }
 
 func cmdConfig(args []string) {
@@ -522,7 +579,7 @@ Keys:
 	if len(args) == 0 {
 		cfg, err := LoadConfig()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
+			printError("%v", err)
 			os.Exit(1)
 		}
 		if jsonOutput {
@@ -538,7 +595,11 @@ Keys:
 		return
 	}
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tenda-n300 config set <key> <value>")
+		if jsonOutput {
+			printJSON(map[string]string{"error": "usage: tenda-n300 config set <key> <value>"})
+		} else {
+			fmt.Fprintln(os.Stderr, "usage: tenda-n300 config set <key> <value>")
+		}
 		os.Exit(1)
 	}
 	switch args[0] {
@@ -547,7 +608,7 @@ Keys:
 		val := strings.Join(args[2:], " ")
 		cfg, err := LoadConfig()
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintln(os.Stderr, "error:", err)
+			printError("%v", err)
 			os.Exit(1)
 		}
 		if cfg == nil {
@@ -556,13 +617,13 @@ Keys:
 		switch key {
 		case "ip":
 			if err := ValidateIPv4(val); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				printError("%v", err)
 				os.Exit(1)
 			}
 			cfg.IP = val
 		case "password":
 			if err := keyringSetPassword(val); err != nil {
-				fmt.Fprintln(os.Stderr, "error: failed to save password to OS keyring:", err)
+				printError("failed to save password to OS keyring: %v", err)
 				os.Exit(1)
 			}
 			if !jsonOutput {
@@ -570,15 +631,15 @@ Keys:
 			}
 			return
 		default:
-			fmt.Fprintf(os.Stderr, "unknown config key: %s (use ip or password)\n", key)
+			printError("unknown config key: %s (use ip or password)", key)
 			os.Exit(1)
 		}
 		if err := SaveConfig(cfg); err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
+			printError("%v", err)
 			os.Exit(1)
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "unknown config subcommand: %s\n", args[0])
+		printError("unknown config subcommand: %s", args[0])
 		os.Exit(1)
 	}
 }

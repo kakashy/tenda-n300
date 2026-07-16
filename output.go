@@ -107,6 +107,15 @@ func printJSON(v any) {
 	enc.Encode(v)
 }
 
+func printError(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if jsonOutput {
+		printJSON(map[string]string{"error": msg})
+	} else {
+		fmt.Fprintln(os.Stderr, "error:", msg)
+	}
+}
+
 func printFirmwareInfo(info *FirmwareInfo) {
 	if jsonOutput {
 		printJSON(info)
