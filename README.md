@@ -19,22 +19,25 @@ A command-line tool for controlling a **Tenda N300** wireless router from your t
 
 ## Installation
 
-### Prerequisites
+### Quick install (one-liner, no Go needed)
 
-- [Go](https://go.dev/dl/) 1.25 or later
-- A Tenda N300 router on the same network
+```sh
+curl -fsSL https://raw.githubusercontent.com/kakashy/tenda-n300/main/install.sh | bash
+```
 
-### Option A: Quick install
+Downloads the latest pre-built binary for your OS and architecture and installs it to `/usr/local/bin` (or `~/.local/bin`).
+
+### Build from source
+
+Requires [Go](https://go.dev/dl/) 1.25 or later.
 
 ```sh
 git clone https://github.com/kakashy/tenda-n300.git
 cd tenda-n300
-./install.sh
+./build.sh
 ```
 
-This builds the binary and installs it to `/usr/local/bin` (or `~/.local/bin`).
-
-### Option B: Manual build
+### Manual build
 
 ```sh
 git clone https://github.com/kakashy/tenda-n300.git
@@ -43,11 +46,11 @@ go build -ldflags="-s -w" -o tenda-n300 .
 sudo mv tenda-n300 /usr/local/bin/
 ```
 
-> Or just use `go install` if `$GOPATH/bin` is on your `$PATH`:
->
-> ```sh
-> go install github.com/kakashy/tenda-n300@latest
-> ```
+### Go install
+
+```sh
+go install github.com/kakashy/tenda-n300@latest
+```
 
 ## Quick start
 
@@ -160,6 +163,8 @@ Auto-discovery (`discover` command) sweeps the local /24 subnet looking for HTTP
 ```sh
 ./uninstall.sh
 ```
+
+> If you installed via `build.sh`, the binary is at `~/.local/bin/tenda-n300`.
 
 ### From a pre-built binary
 

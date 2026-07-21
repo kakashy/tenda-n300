@@ -20,12 +20,22 @@ for d in /etc/bash_completion.d /usr/local/share/bash-completion/completions "$H
 done
 
 # Remove zsh completion
-for d in /usr/local/share/zsh/site-functions /usr/share/zsh/site-functions "$HOME/.zsh/completion"; do
+for d in /usr/local/share/zsh/site-functions /usr/share/zsh/site-functions "$HOME/.local/share/zsh/site-functions"; do
 	if [ -f "$d/_$BINARY" ]; then
 		echo "removing zsh completion: $d/_$BINARY"
 		rm -f "$d/_$BINARY"
 	fi
 done
+
+# Remove zsh completion source line from .zshrc
+if [ -f "$HOME/.zshrc" ]; then
+	_ZSH_LINE="source <($BINARY completion zsh)"
+	grep -sF "$_ZSH_LINE" "$HOME/.zshrc" 2>/dev/null && {
+		echo "removing zsh completion line from ~/.zshrc"
+		grep -vF "$_ZSH_LINE" "$HOME/.zshrc" > "$HOME/.zshrc.tmp"
+		mv "$HOME/.zshrc.tmp" "$HOME/.zshrc"
+	}
+fi
 
 # Remove config and credentials
 CONFIG_DIR="$HOME/.config/tenda-n300"
