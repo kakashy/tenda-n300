@@ -193,7 +193,7 @@ func printWiFiSettings(s *WiFiSettings) {
 func printPingResult(r *PingResult) {
 	if jsonOutput {
 		printJSON(map[string]any{
-			"reachable": r.Reachable,
+			"reachable":  r.Reachable,
 			"latency_ms": r.Latency.Milliseconds(),
 			"api_access": r.APIAccess,
 			"router_ip":  r.RouterIP,

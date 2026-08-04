@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 // MAC address patterns: aa:bb:cc:dd:ee:ff, aa-bb-cc-dd-ee-ff, aabb.ccdd.eeff, AABBCCDDEEFF
 var macPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$`),   // aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff
-	regexp.MustCompile(`^([0-9a-fA-F]{4}\.){2}[0-9a-fA-F]{4}$`),      // aabb.ccdd.eeff
-	regexp.MustCompile(`^[0-9a-fA-F]{12}$`),                           // AABBCCDDEEFF
+	regexp.MustCompile(`^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$`), // aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff
+	regexp.MustCompile(`^([0-9a-fA-F]{4}\.){2}[0-9a-fA-F]{4}$`),   // aabb.ccdd.eeff
+	regexp.MustCompile(`^[0-9a-fA-F]{12}$`),                       // AABBCCDDEEFF
 }
 
 // ValidateMAC checks if the input is a valid MAC address.
@@ -41,6 +42,16 @@ func NormalizeMAC(mac string) string {
 			mac[0:2], mac[2:4], mac[4:6], mac[6:8], mac[8:10], mac[10:12])
 	}
 	return mac
+}
+
+// ValidateChannel checks if the input is a valid WiFi channel (1-11).
+func ValidateChannel(ch string) error {
+	ch = strings.TrimSpace(ch)
+	n, err := strconv.Atoi(ch)
+	if err != nil || n < 1 || n > 11 {
+		return fmt.Errorf("invalid WiFi channel %q (must be 1-11)", ch)
+	}
+	return nil
 }
 
 // ValidateIPv4 checks if the input is a valid IPv4 address.

@@ -12,11 +12,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
-	"time"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Device struct {
@@ -63,17 +63,17 @@ type statusModulesResponse struct {
 }
 
 type systemInfoModule struct {
-	WanType         string `json:"wanType"`
-	WanConnectTime  string `json:"wanConnectTime"`
-	LanIP           string `json:"lanIP"`
-	MacHost         string `json:"macHost"`
-	SoftVersion     string `json:"softVersion"`
-	StatusWanDns1   string `json:"statusWanDns1"`
-	StatusWanDns2   string `json:"statusWanDns2"`
+	WanType           string `json:"wanType"`
+	WanConnectTime    string `json:"wanConnectTime"`
+	LanIP             string `json:"lanIP"`
+	MacHost           string `json:"macHost"`
+	SoftVersion       string `json:"softVersion"`
+	StatusWanDns1     string `json:"statusWanDns1"`
+	StatusWanDns2     string `json:"statusWanDns2"`
 	StatusWanGaterway string `json:"statusWanGaterway"`
-	StatusWanIP     string `json:"statusWanIP"`
-	StatusWanMAC    string `json:"statusWanMAC"`
-	StatusWanMask   string `json:"statusWanMask"`
+	StatusWanIP       string `json:"statusWanIP"`
+	StatusWanMAC      string `json:"statusWanMAC"`
+	StatusWanMask     string `json:"statusWanMask"`
 }
 
 type setQosResponse struct {
@@ -538,16 +538,21 @@ func (c *RouterClient) SetWiFiSettings(s *WiFiSettings) error {
 	if s == nil {
 		return fmt.Errorf("setWifi: settings cannot be nil")
 	}
-	if s.SSID == "" || s.Password == "" || s.Channel == "" || s.Encryption == "" {
-		return fmt.Errorf("setWifi: SSID, password, channel, and encryption are required")
+	if s.SSID == "" && s.Password == "" && s.Channel == "" && s.Encryption == "" {
+		return fmt.Errorf("setWifi: at least one setting must be provided")
 	}
-	// Note: "SSID" is uppercase to match the Tenda goform API field name.
-	// All other fields (password, channel, encrypt) are lowercase as the router expects.
-	data := url.Values{
-		"SSID":     {s.SSID},
-		"password": {s.Password},
-		"channel":  {s.Channel},
-		"encrypt":  {s.Encryption},
+	data := url.Values{}
+	if s.SSID != "" {
+		data.Set("SSID", s.SSID)
+	}
+	if s.Password != "" {
+		data.Set("password", s.Password)
+	}
+	if s.Channel != "" {
+		data.Set("channel", s.Channel)
+	}
+	if s.Encryption != "" {
+		data.Set("encrypt", s.Encryption)
 	}
 	resp, err := c.post("/goform/setWifi", data)
 	if err != nil {

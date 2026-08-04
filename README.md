@@ -13,7 +13,9 @@ A command-line tool for controlling a **Tenda N300** wireless router from your t
 - **Factory reset** — wipe all router settings (with interactive confirmation)
 - **Backup / restore** — save and reload router configuration
 - **Syslog** — export the router's system log
-- **Discover** — scan the local network for Tenda routers
+- **Profiles** — manage multiple routers (home, work) and switch between them
+- **Auto-detection** — remembers which router you're connected to and picks the right profile
+- **Discover** — scan the local network for Tenda routers and save them as profiles
 - **JSON output** — machine-readable output for scripting (`--json`)
 - **Shell completion** — bash and zsh tab completion
 
@@ -60,11 +62,11 @@ go install github.com/kakashy/tenda-n300@latest
    tenda-n300 discover
    ```
 
-2. **Save** the router IP and admin password to config:
+2. **Save** the router IP and admin password as a profile and make it the default:
 
    ```sh
-   tenda-n300 config set ip 192.168.0.1
-   tenda-n300 config set password admin
+   tenda-n300 profile add home --ip 192.168.0.1 --password admin
+   tenda-n300 profile use home
    ```
 
 3. **List** connected devices:
@@ -79,10 +81,14 @@ go install github.com/kakashy/tenda-n300@latest
    tenda-n300 block AA:BB:CC:DD:EE:FF
    ```
 
+> Prefer `profile add home --ip 192.168.0.1 --password admin` over the older
+> `config set ip` / `config set password` commands — `config set` now operates
+> on the *active* profile (the `--profile` flag or the default).
+
 ## Usage
 
 ```
-tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
+tenda-n300 [--ip <addr>] [--password <pass>] [--profile <name>] [--json] <command> [args]
 ```
 
 ### Commands
@@ -100,8 +106,15 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
 | `backup [file]`        | Download config backup (defaults to `RouterCfm.cfg`)           |
 | `restore <file>`       | Restore config from a backup file                              |
 | `syslog [file]`        | Export the system log (prints to stdout if no file given)      |
-| `discover`             | Scan LAN for Tenda routers                                     |
-| `config`               | Show or set persistent config (`ip`, `password`)               |
+| `discover`             | Scan LAN for Tenda routers (can save a found router as a profile) |
+| `config`               | Show active profile / set `ip` or `password` (applies to the active profile) |
+| `profile`              | Show active and default profiles                               |
+| `profile list`         | List profile names                                             |
+| `profile add <name> [--ip <addr>] [--password <pass>]` | Add a router profile                              |
+| `profile set <name> [--ip <addr>] [--password <pass>]` | Update a router profile (at least one flag)                  |
+| `profile use <name>`   | Set the default profile                                        |
+| `profile remove <name>`| Remove a profile and its stored password                       |
+| `profile rename <old> <new>` | Rename a profile (moves its stored password)             |
 | `completion bash\|zsh` | Generate shell completion script                               |
 | `uninstall`            | Remove binary, config, and stored credentials                  |
 
@@ -109,8 +122,9 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--json] <command> [args]
 
 | Flag                      | Description                              |
 | ------------------------- | ---------------------------------------- |
-| `--ip <addr>`             | Router IP address (overrides config)     |
-| `--password <pass>`       | Router admin password (overrides config) |
+| `--ip <addr>`             | Router IP address (overrides config and profiles) |
+| `--password <pass>`       | Router admin password (overrides config and profiles) |
+| `--profile <name>`        | Router profile name (overrides auto-detection) |
 | `--json`                  | Output in JSON format                    |
 | `--ssid <name>`           | New WiFi SSID (for `wifi` command)       |
 | `--wifi-password <pass>`  | New WiFi password (for `wifi` command)   |
@@ -139,6 +153,33 @@ tenda-n300 wifi --ssid "MyNetwork" --wifi-password "newpass123"
 tenda-n300 wifi --channel 11 --encrypt "WPA2PSK/AES"
 ```
 
+### Multiple routers (work/home)
+
+Keep one profile per router and switch between them:
+
+```sh
+# add both routers
+tenda-n300 profile add home --ip 192.168.0.1 --password admin
+tenda-n300 profile add work --ip 10.0.0.1 --password secret
+
+# switch the default
+tenda-n300 profile use work
+
+# use a specific profile for a single command
+tenda-n300 --profile home devices
+
+# list and inspect profiles
+tenda-n300 profile list
+tenda-n300 profile
+```
+
+**Auto-detection:** the tool fingerprints the current network (default gateway
+IP + MAC). On networks it has seen before it picks the matching profile
+automatically; a successful login on a new network remembers it for next time.
+When no profile matches, the default profile is used, or you can pin one with
+`--profile`. `config set ip` / `config set password` always apply to the active
+profile (`--profile` or the default).
+
 ## How it works
 
 The tool communicates with the Tenda N300's proprietary goform API over HTTP:
@@ -152,7 +193,7 @@ Auto-discovery (`discover` command) sweeps the local /24 subnet looking for HTTP
 
 ## Security
 
-- The router admin password is stored in your **OS keyring** (macOS Keychain, Linux Secret Service, Windows Credential Manager) — never in plaintext on disk.
+- The router admin password is stored in your **OS keyring** (macOS Keychain, Linux Secret Service, Windows Credential Manager) — never in plaintext on disk. Passwords are keyed per profile: the default profile uses the key `password`, named profiles use `password:<name>`.
 - All communication with the router is over **plain HTTP** — no TLS.
 - See [`SECURITY.md`](SECURITY.md) for details.
 

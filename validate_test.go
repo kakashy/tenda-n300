@@ -20,9 +20,9 @@ func TestValidateMAC(t *testing.T) {
 		{"aa:bb-cc:dd:ee:ff", false}, // mixed separators
 		{"", true},
 		{"invalid", true},
-		{"aa:bb:cc:dd:ee", true},      // too short
+		{"aa:bb:cc:dd:ee", true},       // too short
 		{"aa:bb:cc:dd:ee:ff:00", true}, // too long
-		{"gg:hh:ii:jj:kk:ll", true},   // invalid hex
+		{"gg:hh:ii:jj:kk:ll", true},    // invalid hex
 		{"aa:bb:cc:dd:ee:ff:gg", true}, // invalid hex
 		{"192.168.0.1", true},          // IP address
 	}
@@ -64,6 +64,33 @@ func TestNormalizeMAC(t *testing.T) {
 	}
 }
 
+func TestValidateChannel(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantErr bool
+	}{
+		{"1", false},
+		{"6", false},
+		{"11", false},
+		{" 3 ", false},
+		{"0", true},
+		{"12", true},
+		{"-1", true},
+		{"abc", true},
+		{"", true},
+		{"1.5", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			err := ValidateChannel(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateChannel(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateIPv4(t *testing.T) {
 	tests := []struct {
 		input   string
@@ -77,14 +104,14 @@ func TestValidateIPv4(t *testing.T) {
 		{" 192.168.0.1", false}, // with leading space (trimmed)
 		{"", true},
 		{"invalid", true},
-		{"192.168.0", true},       // too few octets
-		{"192.168.0.1.2", true},   // too many octets
-		{"999.999.999.999", true}, // out of range
-		{"192.168.001.001", true}, // leading zeros
+		{"192.168.0", true},          // too few octets
+		{"192.168.0.1.2", true},      // too many octets
+		{"999.999.999.999", true},    // out of range
+		{"192.168.001.001", true},    // leading zeros
 		{"::ffff:192.168.0.1", true}, // IPv4-mapped IPv6
-		{"::1", true},               // IPv6 loopback
+		{"::1", true},                // IPv6 loopback
 		{"localhost", true},          // hostname
-		{"192.168.0.1/24", true},    // CIDR notation
+		{"192.168.0.1/24", true},     // CIDR notation
 	}
 
 	for _, tt := range tests {

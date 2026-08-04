@@ -28,7 +28,7 @@ func TestParseHexIP(t *testing.T) {
 		want    string
 		wantNil bool
 	}{
-		{"0101A8C0", "192.168.1.1", false},  // C0A80101 in little-endian
+		{"0101A8C0", "192.168.1.1", false}, // C0A80101 in little-endian
 		{"00000000", "0.0.0.0", false},
 		{"FFFFFFFF", "255.255.255.255", false},
 		{"6401A8C0", "192.168.1.100", false},
