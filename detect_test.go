@@ -109,6 +109,19 @@ func TestRecordNetworkProfile(t *testing.T) {
 		}
 	})
 
+	t.Run("already-matching entry reports no change", func(t *testing.T) {
+		cfg := &Config{Profiles: map[string]Profile{}, NetworkCache: map[string]string{
+			"192.168.0.1|aa:bb:cc:dd:ee:ff": "home",
+		}}
+		fp := NetworkFingerprint{Gateway: "192.168.0.1", GatewayMAC: "aa:bb:cc:dd:ee:ff"}
+		if recordNetworkProfile(cfg, fp, "home") {
+			t.Fatal("expected false when the cache already matches (no rewrite needed)")
+		}
+		if got := cfg.NetworkCache["192.168.0.1|aa:bb:cc:dd:ee:ff"]; got != "home" {
+			t.Fatalf("expected cache unchanged, got %q", got)
+		}
+	})
+
 	t.Run("empty gateway not recorded", func(t *testing.T) {
 		cfg := &Config{Profiles: map[string]Profile{}, NetworkCache: map[string]string{}}
 		if recordNetworkProfile(cfg, NetworkFingerprint{}, "home") {

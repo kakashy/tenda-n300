@@ -115,11 +115,24 @@ Flags:
 	case "uninstall":
 		cmdUninstall()
 	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
-		for _, a := range args[1:] {
+		// Global flags (--json/--profile) may appear after the command word
+		// (e.g. `wifi --json`); extract them before dispatching so every
+		// command honors them uniformly, mirroring cmdProfile.
+		cmdArgs, err := extractGlobalFlags(args[1:])
+		if err != nil {
+			printError("%v", err)
+			os.Exit(1)
+		}
+		for _, a := range cmdArgs {
 			if a == "--help" || a == "-h" {
 				printSubcommandHelp(args[0])
 				os.Exit(0)
 			}
+		}
+		// Validate required positionals before any config load, network
+		// detection, or login attempt so a usage error is reported immediately.
+		if err := validateCommandArgs(args[0], cmdArgs); err != nil {
+			usageError(err.Error())
 		}
 		client := connectRouter(ip, password)
 		switch args[0] {
@@ -129,7 +142,7 @@ Flags:
 			wifiPassword := wifiFlags.String("wifi-password", "", "new WiFi password")
 			wifiChannel := wifiFlags.String("channel", "", "new WiFi channel (1-11)")
 			wifiEncrypt := wifiFlags.String("encrypt", "", "new WiFi encryption mode")
-			wifiFlags.Parse(args[1:])
+			wifiFlags.Parse(cmdArgs)
 
 			hasChanges := *wifiSSID != "" || *wifiPassword != "" || *wifiChannel != "" || *wifiEncrypt != ""
 
@@ -207,15 +220,7 @@ Flags:
 			}
 			printStatus(devices)
 		case "block":
-			if len(args) < 2 {
-				if jsonOutput {
-					printJSON(map[string]string{"error": "usage: tenda-n300 block <mac> [mac2 mac3 ...]"})
-				} else {
-					fmt.Fprintln(os.Stderr, "usage: tenda-n300 block <mac> [mac2 mac3 ...]")
-				}
-				os.Exit(1)
-			}
-			macs := args[1:]
+			macs := cmdArgs
 			var blockFailed bool
 			if jsonOutput {
 				var results []map[string]string
@@ -242,15 +247,7 @@ Flags:
 				os.Exit(1)
 			}
 		case "unblock":
-			if len(args) < 2 {
-				if jsonOutput {
-					printJSON(map[string]string{"error": "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]"})
-				} else {
-					fmt.Fprintln(os.Stderr, "usage: tenda-n300 unblock <mac> [mac2 mac3 ...]")
-				}
-				os.Exit(1)
-			}
-			macs := args[1:]
+			macs := cmdArgs
 			var unblockFailed bool
 			if jsonOutput {
 				var results []map[string]string
@@ -316,8 +313,8 @@ Flags:
 				os.Exit(1)
 			}
 			dest := "RouterCfm.cfg"
-			if len(args) > 1 {
-				dest = args[1]
+			if len(cmdArgs) > 0 {
+				dest = cmdArgs[0]
 			}
 			if err := os.WriteFile(dest, data, 0644); err != nil {
 				printError("%v", err)
@@ -330,14 +327,6 @@ Flags:
 			}
 
 		case "restore":
-			if len(args) < 2 {
-				if jsonOutput {
-					printJSON(map[string]string{"error": "usage: tenda-n300 restore <file>"})
-				} else {
-					fmt.Fprintln(os.Stderr, "usage: tenda-n300 restore <file>")
-				}
-				os.Exit(1)
-			}
 			if !jsonOutput {
 				fmt.Print("are you sure? this will overwrite all config. type 'yes': ")
 				var s string
@@ -346,7 +335,7 @@ Flags:
 					os.Exit(0)
 				}
 			}
-			if err := client.RestoreConfig(args[1]); err != nil {
+			if err := client.RestoreConfig(cmdArgs[0]); err != nil {
 				printError("%v", err)
 				os.Exit(1)
 			}
@@ -364,8 +353,8 @@ Flags:
 				printError("%v", err)
 				os.Exit(1)
 			}
-			if len(args) > 1 {
-				dest := args[1]
+			if len(cmdArgs) > 0 {
+				dest := cmdArgs[0]
 				if err := os.WriteFile(dest, data, 0644); err != nil {
 					printError("%v", err)
 					os.Exit(1)
@@ -394,11 +383,6 @@ Flags:
 
 func connectRouter(ip, password string) *RouterClient {
 	var cfg *Config
-	var profileName string
-	var detected, cacheHit bool
-	var fp NetworkFingerprint
-	fpKey := ""
-
 	if ip == "" || password == "" {
 		var err error
 		cfg, err = LoadConfig()
@@ -406,64 +390,16 @@ func connectRouter(ip, password string) *RouterClient {
 			printError("config error: %v", err)
 			os.Exit(1)
 		}
-
-		if ip == "" {
-			switch {
-			case profileFlag != "":
-				p, name, err := ActiveProfile(cfg, profileFlag)
-				if err != nil {
-					printError("unknown profile %q (have: %s)", profileFlag, profileNames(cfg))
-					os.Exit(1)
-				}
-				if p == nil {
-					printError("no such profile: %s", profileFlag)
-					os.Exit(1)
-				}
-				profileName = name
-				ip = p.IP
-			default:
-				fp, ferr := networkFingerprint()
-				if ferr == nil {
-					fpKey = fingerprintKey(fp)
-				}
-				name, _ := detectProfile(cfg, "", fp)
-				if name != "" {
-					if p, _, aerr := ActiveProfile(cfg, name); aerr == nil && p != nil {
-						profileName = name
-						ip = p.IP
-						detected = true
-						if fpKey != "" && cfg.NetworkCache[fpKey] == name {
-							cacheHit = true
-						}
-					}
-				}
-				if profileName == "" {
-					p, name, err := ActiveProfile(cfg, "")
-					if err != nil {
-						printError("%v", err)
-						os.Exit(1)
-					}
-					if p != nil {
-						profileName = name
-						ip = p.IP
-						detected = true
-					}
-				}
-			}
-			if ip != "" {
-				if err := ValidateIPv4(ip); err != nil {
-					printError("invalid IP in config: %v", err)
-					os.Exit(1)
-				}
-			}
-		} else {
-			// --ip was given without --password; resolve the active profile so
-			// a stored keyring password can be consulted below.
-			if p, name, ok, aerr := lookupActiveProfile(cfg); aerr == nil && ok && p != nil {
-				profileName = name
-			}
-		}
 	}
+
+	t, err := resolveTarget(ip, password, cfg)
+	if err != nil {
+		printError("%v", err)
+		os.Exit(1)
+	}
+	ip, password, profileName := t.ip, t.password, t.profileName
+	detected, cacheHit := t.detected, t.cacheHit
+	cfg, fp, fpKey := t.cfg, t.fp, t.fpKey
 
 	if ip == "" {
 		guess := "192.168.0.1"
@@ -507,7 +443,6 @@ func connectRouter(ip, password string) *RouterClient {
 	}
 
 	if password == "" && profileName != "" {
-		var err error
 		password, err = keyringGetPassword(profileName)
 		if err != nil {
 			printError("no password set for profile %q", profileName)
@@ -524,8 +459,13 @@ func connectRouter(ip, password string) *RouterClient {
 	client, err := NewRouterClient(ip, password)
 	if err != nil {
 		if cacheHit && cfg != nil {
+			// Evict on any login failure, transient errors included: a
+			// fingerprint that keeps resolving to a wrong profile should not
+			// be retried (and re-evicted) on every run.
 			delete(cfg.NetworkCache, fpKey)
-			SaveConfig(cfg)
+			if err := SaveConfig(cfg); err != nil && !jsonOutput {
+				fmt.Fprintf(os.Stderr, "warning: failed to save config after eviction: %v\n", err)
+			}
 			if cfg.DefaultProfile != "" && cfg.DefaultProfile != profileName {
 				if p, ok := cfg.Profiles[cfg.DefaultProfile]; ok {
 					if pw, kerr := keyringGetPassword(cfg.DefaultProfile); kerr == nil {
@@ -543,6 +483,98 @@ func connectRouter(ip, password string) *RouterClient {
 		SaveConfig(cfg)
 	}
 	return client
+}
+
+// routerTarget carries the result of profile resolution: the router IP and
+// password to use (password stays empty until the keyring is consulted), the
+// resolved profile name, and the bookkeeping connectRouter needs for network
+// auto-detection (fingerprint, cache-hit flag, and whether detection produced
+// the target).
+type routerTarget struct {
+	ip          string
+	password    string
+	profileName string
+	detected    bool
+	cacheHit    bool
+	cfg         *Config
+	fp          NetworkFingerprint
+	fpKey       string
+}
+
+// resolveTarget determines which router to talk to. Explicit --ip/--password
+// win; otherwise the profile selected by --profile or the configured default is
+// used, falling back to network auto-detection when no explicit profile is
+// given. It performs no keyring access and no network I/O beyond the network
+// fingerprint, so it can be unit-tested with the networkFingerprint var
+// stubbed. cfg may be nil when both --ip and --password were provided.
+func resolveTarget(ip, password string, cfg *Config) (routerTarget, error) {
+	t := routerTarget{ip: ip, password: password, cfg: cfg}
+
+	if ip == "" {
+		switch {
+		case profileFlag != "":
+			p, name, err := ActiveProfile(cfg, profileFlag)
+			if err != nil {
+				return t, fmt.Errorf("unknown profile %q (have: %s)", profileFlag, profileNames(cfg))
+			}
+			if p == nil {
+				return t, fmt.Errorf("no such profile: %s", profileFlag)
+			}
+			t.profileName = name
+			t.ip = p.IP
+		default:
+			fp, ferr := networkFingerprint()
+			t.fp = fp
+			if ferr == nil {
+				t.fpKey = fingerprintKey(fp)
+			}
+			if name, _ := detectProfile(cfg, "", fp); name != "" {
+				if p, _, aerr := ActiveProfile(cfg, name); aerr == nil && p != nil {
+					t.profileName = name
+					t.ip = p.IP
+					t.detected = true
+					if cfg != nil && t.fpKey != "" && cfg.NetworkCache[t.fpKey] == name {
+						t.cacheHit = true
+					}
+				}
+			}
+			if t.profileName == "" {
+				p, name, err := ActiveProfile(cfg, "")
+				if err != nil {
+					return t, err
+				}
+				if p != nil {
+					t.profileName = name
+					t.ip = p.IP
+					t.detected = true
+				}
+			}
+		}
+		if t.ip != "" {
+			if err := ValidateIPv4(t.ip); err != nil {
+				return t, fmt.Errorf("invalid IP in config: %v", err)
+			}
+		}
+	} else if profileFlag != "" {
+		// --ip given without --password; an explicit --profile still names the
+		// profile whose stored keyring password should be consulted below. An
+		// unknown/invalid profile is a hard error, not a silent fallback.
+		p, name, ok, aerr := lookupActiveProfile(cfg)
+		if aerr != nil {
+			return t, aerr
+		}
+		if ok && p != nil {
+			t.profileName = name
+		}
+	} else {
+		// --ip given without --password and no explicit profile: resolving the
+		// active profile is best-effort (a missing default is not an error
+		// here, since the password may be supplied on the command line).
+		if p, name, ok, aerr := lookupActiveProfile(cfg); aerr == nil && ok && p != nil {
+			t.profileName = name
+		}
+	}
+	return t, nil
 }
 
 func cmdDiscover() {
@@ -616,9 +648,14 @@ func cmdPing(ip string) {
 			printError("config error: %v", err)
 			os.Exit(1)
 		}
-		if p, _ := resolveActiveProfile(cfg); p != nil {
-			ip = p.IP
+		// Use the same detection-aware resolution as connectRouter so ping
+		// targets the profile for the current network, not just the default.
+		t, err := resolveTarget("", "", cfg)
+		if err != nil {
+			printError("%v", err)
+			os.Exit(1)
 		}
+		ip = t.ip
 	}
 	if ip == "" {
 		printError("no router IP set (use --ip or `config set ip`)")
@@ -707,6 +744,23 @@ func cmdUninstall() {
 }
 
 func cmdConfig(args []string) {
+	// --json/--profile may appear anywhere in the args (e.g.
+	// `config set password foo --json`); they only affect output mode and the
+	// active profile, never which config key is set. Strip them before
+	// dispatching and restore the globals afterwards.
+	oldJSON := jsonOutput
+	oldProfile := profileFlag
+	rest, err := extractGlobalFlags(args)
+	if err != nil {
+		printError("%v", err)
+		os.Exit(1)
+	}
+	args = rest
+	defer func() {
+		jsonOutput = oldJSON
+		profileFlag = oldProfile
+	}()
+
 	for _, a := range args {
 		if a == "--help" || a == "-h" {
 			fmt.Fprintf(os.Stderr, `Usage: tenda-n300 config [set <key> <value>]
@@ -771,6 +825,9 @@ Keys:
 		}
 		switch key {
 		case "ip":
+			if len(args[2:]) > 1 {
+				usageError("usage: tenda-n300 config set ip <addr> (takes exactly one value)")
+			}
 			if err := ValidateIPv4(val); err != nil {
 				printError("%v", err)
 				os.Exit(1)
@@ -788,16 +845,30 @@ Keys:
 			}
 		case "password":
 			_, name := resolveActiveProfile(cfg)
+			// With zero profiles, mirror `config set ip` and back the password
+			// with a "default" profile so the keyring entry is not orphaned
+			// (never read by a later `profile add`).
+			created := false
+			if name == "" {
+				name = "default"
+				cfg.DefaultProfile = "default"
+				cfg.Profiles["default"] = Profile{}
+				created = true
+			}
+			// Save config first so a failed write aborts before any keyring
+			// entry is created.
+			if created {
+				if err := SaveConfig(cfg); err != nil {
+					printError("%v", err)
+					os.Exit(1)
+				}
+			}
 			if err := keyringSetPassword(name, val); err != nil {
 				printError("failed to save password to OS keyring: %v", err)
 				os.Exit(1)
 			}
 			if !jsonOutput {
-				if name != "" {
-					fmt.Fprintf(os.Stderr, "password saved to OS keyring for profile %q\n", name)
-				} else {
-					fmt.Fprintln(os.Stderr, "password saved to OS keyring")
-				}
+				fmt.Fprintf(os.Stderr, "password saved to OS keyring for profile %q\n", name)
 			}
 			return
 		default:
@@ -821,7 +892,12 @@ func cmdProfile(args []string) {
 	// restore the globals afterwards.
 	oldJSON := jsonOutput
 	oldProfile := profileFlag
-	args = extractGlobalFlags(args)
+	rest, err := extractGlobalFlags(args)
+	if err != nil {
+		printError("%v", err)
+		os.Exit(1)
+	}
+	args = rest
 	defer func() {
 		jsonOutput = oldJSON
 		profileFlag = oldProfile
@@ -861,8 +937,10 @@ func cmdProfile(args []string) {
 
 // extractGlobalFlags removes --json/--profile flags (in either position) from
 // args, applies them to the package globals, and returns the remaining
-// positional args.
-func extractGlobalFlags(args []string) []string {
+// positional args. A --profile that is missing a value (or whose value looks
+// like another flag) is an error rather than silently swallowing the next
+// token, mirroring parseProfileFlags.
+func extractGlobalFlags(args []string) ([]string, error) {
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -872,17 +950,18 @@ func extractGlobalFlags(args []string) []string {
 		case strings.HasPrefix(a, "--json="):
 			jsonOutput = a != "--json=false"
 		case a == "--profile":
-			if i+1 < len(args) {
-				i++
-				profileFlag = args[i]
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+				return out, fmt.Errorf("flag needs an argument: --profile")
 			}
+			i++
+			profileFlag = args[i]
 		case strings.HasPrefix(a, "--profile="):
 			profileFlag = strings.TrimPrefix(a, "--profile=")
 		default:
 			out = append(out, a)
 		}
 	}
-	return out
+	return out, nil
 }
 
 // resolveActiveProfile returns the profile selected by --profile or the
@@ -1071,12 +1150,6 @@ func profileAdd(args []string) {
 		fmt.Printf("Router password for profile %q: ", name)
 		fmt.Scanln(&pwd)
 	}
-	if pwd != "" {
-		if err := keyringSetPassword(name, pwd); err != nil {
-			printError("failed to save password to OS keyring: %v", err)
-			os.Exit(1)
-		}
-	}
 
 	cfg.Profiles[name] = Profile{IP: ip}
 	if len(cfg.Profiles) == 1 {
@@ -1091,9 +1164,17 @@ func profileAdd(args []string) {
 			}
 		}
 	}
+	// Save config before storing the password so a failed write does not leave
+	// an orphan keyring entry for a profile that does not exist.
 	if err := SaveConfig(cfg); err != nil {
 		printError("%v", err)
 		os.Exit(1)
+	}
+	if pwd != "" {
+		if err := keyringSetPassword(name, pwd); err != nil {
+			printError("failed to save password to OS keyring: %v", err)
+			os.Exit(1)
+		}
 	}
 	if jsonOutput {
 		printJSON(map[string]any{"status": "ok", "profile": name, "ip": ip, "default": cfg.DefaultProfile == name})
@@ -1204,27 +1285,33 @@ func profileRemove(args []string) {
 			delete(cfg.NetworkCache, k)
 		}
 	}
+	// Removing the default with profiles still remaining promotes a
+	// deterministic replacement (lexicographically first) so later commands
+	// keep working instead of failing with "no default profile set".
+	promoted := false
 	if cfg.DefaultProfile == name {
 		switch len(cfg.Profiles) {
 		case 0:
 			cfg.DefaultProfile = ""
-		case 1:
-			for n := range cfg.Profiles {
-				cfg.DefaultProfile = n
-			}
 		default:
-			cfg.DefaultProfile = ""
+			cfg.DefaultProfile = sortedProfileNames(cfg)[0]
+			promoted = true
 		}
 	}
-	keyringDeletePassword(name)
 	if err := SaveConfig(cfg); err != nil {
 		printError("%v", err)
 		os.Exit(1)
+	}
+	if err := keyringDeletePassword(name); err != nil && !jsonOutput {
+		fmt.Fprintf(os.Stderr, "warning: failed to delete stored password for %q: %v\n", name, err)
 	}
 	if jsonOutput {
 		printJSON(map[string]any{"status": "ok", "removed": name, "default_profile": cfg.DefaultProfile})
 	} else {
 		fmt.Printf("removed profile %q\n", name)
+		if promoted {
+			fmt.Printf("default profile set to %q\n", cfg.DefaultProfile)
+		}
 	}
 }
 
@@ -1252,13 +1339,6 @@ func profileRename(args []string) {
 		printError("profile %q already exists", newName)
 		os.Exit(1)
 	}
-	if pwd, err := keyringGetPassword(oldName); err == nil {
-		if err := keyringSetPassword(newName, pwd); err != nil {
-			printError("failed to save password to OS keyring: %v", err)
-			os.Exit(1)
-		}
-		keyringDeletePassword(oldName)
-	}
 	delete(cfg.Profiles, oldName)
 	cfg.Profiles[newName] = p
 	for k, v := range cfg.NetworkCache {
@@ -1269,15 +1349,52 @@ func profileRename(args []string) {
 	if cfg.DefaultProfile == oldName {
 		cfg.DefaultProfile = newName
 	}
+	// Save config before moving the keyring credential so a failed write does
+	// not leave an orphan "password:<new>" entry behind.
 	if err := SaveConfig(cfg); err != nil {
 		printError("%v", err)
 		os.Exit(1)
+	}
+	if pwd, err := keyringGetPassword(oldName); err == nil {
+		if err := keyringSetPassword(newName, pwd); err != nil {
+			printError("failed to save password to OS keyring: %v", err)
+			os.Exit(1)
+		}
+		keyringDeletePassword(oldName)
 	}
 	if jsonOutput {
 		printJSON(map[string]string{"status": "ok", "renamed": oldName, "to": newName})
 	} else {
 		fmt.Printf("renamed profile %q to %q\n", oldName, newName)
 	}
+}
+
+// usageError prints a usage message in both output modes and exits. It keeps
+// the output byte-identical to the pre-existing inline usage handlers.
+func usageError(msg string) {
+	if jsonOutput {
+		printJSON(map[string]string{"error": msg})
+	} else {
+		fmt.Fprintln(os.Stderr, msg)
+	}
+	os.Exit(1)
+}
+
+// validateCommandArgs checks that a command's required positional arguments are
+// present. It is called before connectRouter so a usage error is reported
+// without attempting config load, network detection, keyring access, or login.
+func validateCommandArgs(cmd string, args []string) error {
+	switch cmd {
+	case "block", "unblock":
+		if len(args) < 1 {
+			return fmt.Errorf("usage: tenda-n300 %s <mac> [mac2 mac3 ...]", cmd)
+		}
+	case "restore":
+		if len(args) < 1 {
+			return fmt.Errorf("usage: tenda-n300 restore <file>")
+		}
+	}
+	return nil
 }
 
 func printProfileHelp() {

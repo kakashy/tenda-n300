@@ -150,9 +150,10 @@ func TestConfigSetIPScopedViaProfileFlag(t *testing.T) {
 	cmdProfile([]string{"add", "home", "--ip", "192.168.0.1"})
 	cmdProfile([]string{"add", "work", "--ip", "10.0.0.2"})
 
+	oldProfile := profileFlag
 	profileFlag = "work"
+	t.Cleanup(func() { profileFlag = oldProfile })
 	cmdConfig([]string{"set", "ip", "10.0.0.3"})
-	profileFlag = ""
 
 	cfg, err := LoadConfig()
 	if err != nil {

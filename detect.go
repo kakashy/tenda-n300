@@ -58,6 +58,11 @@ func recordNetworkProfile(cfg *Config, fp NetworkFingerprint, profile string) bo
 	if cfg.NetworkCache == nil {
 		cfg.NetworkCache = map[string]string{}
 	}
+	// Already recorded: report no change so the caller can skip a redundant
+	// config write on every successful command.
+	if cfg.NetworkCache[key] == profile {
+		return false
+	}
 	cfg.NetworkCache[key] = profile
 	trimNetworkCache(cfg.NetworkCache, key)
 	return true

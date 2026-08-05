@@ -105,10 +105,12 @@ _tenda_n300() {
     )
 
     _arguments -C \
-        '--ip[router IP address]' \
-        '--password[router admin password]' \
+        '--ip=[router IP address]:address:_message "router IP address"' \
+        '--password=[router admin password]:password:_message "router admin password"' \
         '--profile=[router profile name]:profile:->profiles' \
         '--json[output as JSON]' \
+        '-h[show help]' \
+        '--help[show help]' \
         '--version[show version]' \
         '1:command:->cmds' \
         '*::args:->args'
@@ -129,18 +131,20 @@ _tenda_n300() {
                         '--ssid[new WiFi SSID]' \
                         '--wifi-password[new WiFi password]' \
                         '--channel[new WiFi channel (1-11)]' \
-                        '--encrypt[new WiFi encryption mode]'
+                        '--encrypt[new WiFi encryption mode]' \
+                        '-h[show help]' \
+                        '--help[show help]'
                     ;;
                 config)
                     if (( CURRENT == 2 )); then
-                        _values 'subcommand' 'set'
+                        _values 'subcommand' 'set' '--help'
                     elif (( CURRENT == 3 )); then
                         _values 'key' 'ip' 'password'
                     fi
                     ;;
                 profile)
                     if (( CURRENT == 2 )); then
-                        _values 'subcommand' 'list' 'add' 'set' 'use' 'remove' 'rename'
+                        _values 'subcommand' 'list' 'add' 'set' 'use' 'remove' 'rename' '--help'
                     elif (( CURRENT == 3 )); then
                         case $words[2] in
                             use|set|remove|rename)

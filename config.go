@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -153,6 +154,15 @@ func SaveConfig(cfg *Config) error {
 	}
 	if err := os.Rename(tmpName, path); err != nil {
 		return err
+	}
+	// fsync the parent directory so the rename is durable across a crash.
+	// Windows cannot open a directory for syncing, so this is skipped there
+	// and treated as best-effort (non-fatal) everywhere else.
+	if runtime.GOOS != "windows" {
+		if d, err := os.Open(filepath.Dir(path)); err == nil {
+			d.Sync()
+			d.Close()
+		}
 	}
 	if !jsonOutput {
 		fmt.Fprintf(os.Stderr, "saved config to %s\n", path)
