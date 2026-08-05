@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T00:00:00Z",
+  "title": "Design System: tenda-n300",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Warm Paper", "canonical": "#f5f1e8", "tonalRamp": ["#1a1917", "#3a372f", "#5c584c", "#8a8371", "#b8b09c", "#d8d0c0", "#ece6d9", "#f5f1e8"] },
+      "paper-deep": { "role": "neutral", "displayName": "Deep Paper", "canonical": "#ece6d9", "tonalRamp": ["#6b6355", "#a89e8a", "#c8bfac", "#d8d0c0", "#e3dccd", "#ece6d9", "#f1ede4", "#f7f4ee"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1a1917", "tonalRamp": ["#050505", "#0f0f0e", "#1a1917", "#2b2a26", "#3f3d38", "#55524b", "#8a8371", "#d8d0c0"] },
+      "ink-soft": { "role": "neutral", "displayName": "Soft Ink", "canonical": "#55524b", "tonalRamp": ["#1a1917", "#2b2a26", "#3f3d38", "#55524b", "#6b6559", "#8a8371", "#b8b09c", "#d8d0c0"] },
+      "rule": { "role": "neutral", "displayName": "Hairline", "canonical": "#d8d0c0", "tonalRamp": ["#6b6355", "#8a8371", "#a89e8a", "#b8b09c", "#c8bfac", "#d8d0c0", "#e3dccd", "#ece6d9"] },
+      "rule-dark": { "role": "neutral", "displayName": "Dark Hairline", "canonical": "#a89e8a", "tonalRamp": ["#554f42", "#6b6355", "#8a8371", "#a89e8a", "#b8b09c", "#c8bfac", "#d8d0c0", "#e3dccd"] },
+      "led-green": { "role": "primary", "displayName": "LED Green", "canonical": "#0e7a3c", "tonalRamp": ["#052713", "#0a4a24", "#0e7a3c", "#12a04f", "#2fc46b", "#6fce8a", "#b0e8c2", "#e0f5e7"] },
+      "led-red": { "role": "primary", "displayName": "LED Red", "canonical": "#c2251d", "tonalRamp": ["#3d0a07", "#6b120d", "#c2251d", "#e04840", "#ff6b61", "#ff938b", "#ffc2bd", "#ffe7e5"] },
+      "term-bg": { "role": "neutral", "displayName": "Terminal Black", "canonical": "#161616", "tonalRamp": ["#050505", "#0b0b0b", "#161616", "#1e1e1e", "#2a2a2a", "#3a3a3a", "#555555", "#8f8b83"] },
+      "term-ink": { "role": "neutral", "displayName": "Terminal Ink", "canonical": "#d9d6cf", "tonalRamp": ["#161616", "#2f2f2c", "#4d4a45", "#6b6761", "#8f8b83", "#b5b1a8", "#d9d6cf", "#f2f0eb"] },
+      "term-dim": { "role": "neutral", "displayName": "Terminal Dim", "canonical": "#8f8b83", "tonalRamp": ["#161616", "#2f2f2c", "#4d4a45", "#6b6761", "#8f8b83", "#b5b1a8", "#d9d6cf", "#f2f0eb"] },
+      "term-green": { "role": "secondary", "displayName": "Terminal Green", "canonical": "#6fce8a", "tonalRamp": ["#0a2410", "#14471f", "#1d6b31", "#2f9a4c", "#6fce8a", "#9cdfaf", "#c8efd3", "#e9f9ee"] },
+      "term-red": { "role": "secondary", "displayName": "Terminal Red", "canonical": "#ff6b61", "tonalRamp": ["#2b0a08", "#4d1310", "#7a1d18", "#c2251d", "#ff6b61", "#ff938b", "#ffc2bd", "#ffe7e5"] },
+      "term-cyan": { "role": "secondary", "displayName": "Terminal Cyan", "canonical": "#6cc7d9", "tonalRamp": ["#0a2227", "#123d45", "#1d5b66", "#3b8ca0", "#6cc7d9", "#96d9e6", "#c4ebf1", "#e8f8fa"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Manual paragraphs, 46rem measure." },
+      "section-head": { "displayName": "Section Head", "purpose": "Man-page .SH headings: NAME, SYNOPSIS, OPTIONS, etc." },
+      "term": { "displayName": "Terminal", "purpose": "All output in terminal blocks, white-space pre." },
+      "label": { "displayName": "Chrome Label", "purpose": "Terminal title bar and status chrome." }
+    },
+    "shadows": [
+      { "name": "terminal-lift", "value": "0 1px 0 rgba(0,0,0,0.15), 0 8px 24px -12px rgba(0,0,0,0.5)", "purpose": "The only shadow: under terminal windows so output reads as a physical device." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "All state transitions (hover, reveal, color swaps)." },
+      { "name": "pager-slide", "value": "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "The less-style pager reveal on scroll." },
+      { "name": "typewriter", "value": "120ms per line", "purpose": "Command explorer transcript reveal; disabled under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "720px", "purpose": "Options collapse to single column; pager drops its jump rail; copy button docks below the command." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Terminal Window",
+      "kind": "custom",
+      "refersTo": "term-window",
+      "description": "The tool speaking: dark block with chrome bar, LED, pre-formatted output.",
+      "html": "<figure class=\"ds-term\"><div class=\"ds-term__bar\"><span class=\"ds-led ds-led--on\"></span><span class=\"ds-term__title\">status</span></div><pre class=\"ds-term__body\"><span class=\"ds-tp\">$</span> tenda-n300 status</pre></figure>",
+      "css": ".ds-term { background: #161616; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,0.15), 0 8px 24px -12px rgba(0,0,0,0.5); margin: 1.25rem 0; color: #d9d6cf; font-family: \"IBM Plex Mono\", ui-monospace, Menlo, monospace; } .ds-term__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.85rem; background: #1e1e1e; border-bottom: 1px solid #2a2a2a; } .ds-led { width: 9px; height: 9px; border-radius: 50%; background: #8f8b83; } .ds-led--on { background: #6fce8a; box-shadow: 0 0 6px rgba(111,206,138,0.8); } .ds-term__title { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: #8f8b83; } .ds-term__body { margin: 0; padding: 1rem 1.1rem; font-size: 0.88rem; line-height: 1.55; overflow-x: auto; } .ds-tp { color: #6fce8a; }"
+    },
+    {
+      "name": "Copy Button",
+      "kind": "button",
+      "refersTo": "copy-button",
+      "description": "Micro uppercase hairline button; inverts to green on hover and on success.",
+      "html": "<button class=\"ds-copy\">copy</button>",
+      "css": ".ds-copy { font-family: \"IBM Plex Mono\", ui-monospace, Menlo, monospace; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: #d9d6cf; background: transparent; border: 1px solid #3a3a3a; border-radius: 4px; padding: 0.35rem 0.7rem; cursor: pointer; transition: border-color 0.15s cubic-bezier(0.22,1,0.36,1), color 0.15s cubic-bezier(0.22,1,0.36,1); } .ds-copy:hover { border-color: #6fce8a; color: #6fce8a; } .ds-copy:focus-visible { outline: 2px solid #0e7a3c; outline-offset: 2px; } .ds-copy:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Command Explorer Tab",
+      "kind": "nav",
+      "refersTo": "explorer-command",
+      "description": "Pressed command tab inverts to ink-on-paper; rest sits hairline-on-deep-paper.",
+      "html": "<button class=\"ds-cmd\" aria-pressed=\"true\">status</button><button class=\"ds-cmd\" aria-pressed=\"false\">devices</button>",
+      "css": ".ds-cmd { font-family: \"IBM Plex Mono\", ui-monospace, Menlo, monospace; font-size: 0.82rem; color: #1a1917; background: transparent; border: 0; border-right: 1px solid #d8d0c0; padding: 0.55rem 0.9rem; cursor: pointer; transition: background 0.15s cubic-bezier(0.22,1,0.36,1); } .ds-cmd:hover { background: #f5f1e8; } .ds-cmd[aria-pressed=\"true\"] { background: #1a1917; color: #f5f1e8; } .ds-cmd:focus-visible { outline: 2px solid #0e7a3c; outline-offset: 2px; }"
+    },
+    {
+      "name": "The Pager",
+      "kind": "nav",
+      "refersTo": "pager",
+      "description": "Fixed bottom less-style status bar: jump links left, scroll percent right, terminal-black chrome.",
+      "html": "<div class=\"ds-pager\"><span class=\"ds-pager__left\">tenda-n300(1)</span><nav class=\"ds-pager__jump\"><button type=\"button\">install</button><button type=\"button\">security</button></nav><span class=\"ds-pager__pos\">42%</span></div>",
+      "css": ".ds-pager { display: flex; align-items: center; gap: 1rem; background: #161616; color: #d9d6cf; font-family: \"IBM Plex Mono\", ui-monospace, Menlo, monospace; font-size: 0.78rem; padding: 0.45rem 1rem; border-top: 1px solid #2a2a2a; } .ds-pager__left { color: #8f8b83; } .ds-pager__jump button { font-family: inherit; font-size: 0.78rem; color: #d9d6cf; background: none; border: 0; border-bottom: 1px solid transparent; cursor: pointer; transition: color 0.15s cubic-bezier(0.22,1,0.36,1), border-color 0.15s cubic-bezier(0.22,1,0.36,1); } .ds-pager__jump button:hover { color: #6fce8a; border-bottom-color: #6fce8a; } .ds-pager__pos { color: #8f8b83; font-variant-numeric: tabular-nums; margin-left: auto; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Router Manual on Paper",
+    "overview": "This site is not a website about a command-line tool; it is the tool's man page, typeset as a printed Unix manual. A homelabber landing on it should feel they have already opened `man tenda-n300` — the grammar of the manual (NAME, SYNOPSIS, OPTIONS, FILES, SEE ALSO, the double-rule header and footer) is the design. Where the manual talks about running the tool, the page becomes the tool: output is rendered as a real dark terminal block, not described.\n\nThe surface is warm paper with black ink, IBM Plex Mono throughout, and hairline rules. The only color is router-LED status: green for online/allowed, red for blocked/danger — used where live network state is shown, never as decoration. Density is high and steady, like a real manual page; the scroll is long, and the only interactive devices are a copy button, a command explorer, and a less-style pager that reveals on scroll.",
+    "keyCharacteristics": [
+      "The whole page reads as one continuous man page, from header rule to footer rule.",
+      "Terminal output is dark blocks on warm paper — the only dark surfaces, and they mean 'the tool speaking.'",
+      "Mono type at every scale; hierarchy comes from weight and size, never a second family.",
+      "Status color is LED language: green and red only, and only on live output."
+    ],
+    "rules": [
+      { "name": "The Two-LED Rule", "body": "Green and red are the only chromatic colors on paper, they mean network status, and they never leave the terminal blocks. If a region is not showing the tool speaking, it is ink on paper.", "section": "colors" },
+      { "name": "The Typewriter Rule", "body": "Nothing on the page leaves IBM Plex Mono. No display serif, no grotesque, no system sans. A second face anywhere is a broken promise of the manual.", "section": "typography" },
+      { "name": "The Flat-Paper Rule", "body": "Paper regions never cast shadows. Only a terminal block may lift, and only with the single documented shadow. A soft shadow anywhere else is decoration.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every surface on warm paper with ink text unless it is a terminal block.",
+      "Do use green and red only to mean network state, and only inside terminal output (plus the focus ring and copy success).",
+      "Do render the tool's output as terminal blocks — author transcripts in the real format and label sample data as such.",
+      "Do set section heads as bold .SH-style manual heads; the man-page grammar is the identity.",
+      "Do reserve the lift shadow for terminal windows alone."
+    ],
+    "donts": [
+      "Don't add a second typeface — the page is one mono family end to end.",
+      "Don't put status color on the paper or on chrome; LEDs live on dark terminal glass.",
+      "Don't use gradient text, glass, glyph icons, or emoji — iconography is the LED and the $ prompt.",
+      "Don't use cards, hero metrics, or kicker labels — the manual has no such scaffolds.",
+      "Don't let an em dash stand in for the man-page colon cadence; the manual speaks in colons and hyphens."
+    ]
+  }
+}

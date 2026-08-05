@@ -1,0 +1,477 @@
+/* ============================================================
+   tenda-n300(1) — a living man page
+   World: printed Unix manual on warm paper.
+   Ink black on off-white stock, hairline rules, IBM Plex Mono.
+   Router-LED green / red are the only status color, used for
+   live output and blocked devices, never decoration. Where the
+   manual shows the tool at work, the page becomes a terminal.
+   ============================================================ */
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --paper: #f5f1e8;
+  --paper-deep: #ece6d9;
+  --ink: #1a1917;
+  --ink-soft: #55524b;
+  --rule: #d8d0c0;
+  --rule-dark: #a89e8a;
+  --led-green: #0e7a3c;
+  --led-red: #c2251d;
+  --term-bg: #161616;
+  --term-ink: #d9d6cf;
+  --term-dim: #8f8b83;
+  --term-green: #6fce8a;
+  --term-red: #ff6b61;
+  --term-cyan: #6cc7d9;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --measure: 46rem;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 1rem;
+}
+
+body {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- paper column ---------- */
+.paper {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 6rem;
+}
+
+/* ---------- man page header / footer rules ---------- */
+.doc-head,
+.doc-foot {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.doc-head__rule,
+.doc-foot__rule {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--rule-dark);
+  border-bottom: 1px solid var(--rule-dark);
+  padding: 0.45rem 0;
+}
+.doc-head__rule {
+  border-top: none;
+  margin-bottom: 3rem;
+}
+.doc-foot {
+  margin-top: 3.5rem;
+}
+.doc-foot__rule {
+  border-bottom: none;
+}
+
+/* ---------- sections (.SH) ---------- */
+.sh {
+  margin-top: 3.25rem;
+}
+.sh:first-of-type {
+  margin-top: 0;
+}
+.sh__head {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+
+.pp {
+  margin: 0 0 1rem;
+  max-width: 100%;
+}
+
+b, strong { font-weight: 700; }
+i, em { font-style: italic; }
+
+a {
+  color: var(--ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--rule-dark);
+  transition: text-decoration-color 0.15s var(--ease);
+}
+a:hover {
+  text-decoration-color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--led-green);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--term-bg);
+  color: var(--term-ink);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* ---------- synopsis ---------- */
+.synopsis {
+  margin: 0 0 1.25rem;
+  padding: 0.8rem 1rem;
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ---------- hanging bullet list (Bl) ---------- */
+.bl {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+.bl li {
+  margin: 0.35rem 0;
+  padding-left: 1.6rem;
+  text-indent: -1.6rem;
+}
+.bl li::before {
+  content: "-";
+  padding-right: 0.9rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- definition lists (dl) ---------- */
+.dl {
+  margin: 0 0 1rem;
+}
+.dl dt {
+  font-weight: 700;
+  margin-top: 0.9rem;
+}
+.dl dd {
+  margin: 0.2rem 0 0;
+}
+
+/* ---------- options ---------- */
+.opts {
+  margin: 0;
+}
+.opt {
+  display: grid;
+  grid-template-columns: minmax(11rem, auto) 1fr;
+  gap: 0.25rem 1.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.opt:last-child {
+  border-bottom: none;
+}
+.opt dt {
+  font-size: 0.92rem;
+}
+.opt dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- inline code ---------- */
+.code-inline {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ---------- terminal blocks ---------- */
+.term {
+  margin: 1.25rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--term-bg);
+  color: var(--term-ink);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+.term__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  background: #1e1e1e;
+  border-bottom: 1px solid #2a2a2a;
+}
+.term__led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--term-dim);
+  flex: 0 0 auto;
+}
+.term__led--on {
+  background: var(--term-green);
+  box-shadow: 0 0 6px rgba(111, 206, 138, 0.8);
+}
+.term__title {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--term-dim);
+}
+.term__body {
+  position: relative;
+  padding: 1rem 1.1rem 1.1rem;
+  overflow-x: auto;
+}
+.term__pre {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.tp { color: var(--term-green); }         /* prompt     */
+.ti { color: var(--term-cyan); }          /* input text */
+.tk { color: var(--term-ink); }           /* plain      */
+.td { color: var(--term-dim); }           /* dim        */
+.tr { color: var(--term-red); }           /* danger     */
+
+/* ---------- install term with copy ---------- */
+.term--install .term__body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 0.5rem;
+  padding-right: 0.75rem;
+}
+.copy {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--term-ink);
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.copy:hover {
+  border-color: var(--term-green);
+  color: var(--term-green);
+}
+.copy:active {
+  transform: translateY(1px);
+}
+.copy--done {
+  border-color: var(--term-green);
+  color: var(--term-green);
+}
+
+/* ---------- command explorer ---------- */
+.explorer {
+  border: 1px solid var(--rule-dark);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1.25rem 0;
+  background: var(--paper);
+}
+.explorer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-deep);
+}
+.explorer__cmd {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.explorer__cmd:hover {
+  background: var(--paper);
+}
+.explorer__cmd[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.explorer__stage {
+  padding: 1.1rem 1.1rem 0;
+}
+.explorer__syn {
+  font-size: 0.88rem;
+  margin: 0 0 0.9rem;
+  color: var(--ink-soft);
+}
+.explorer__syn b {
+  color: var(--ink);
+}
+
+/* ---------- pager (less-style status bar) ---------- */
+.pager {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--term-bg);
+  color: var(--term-ink);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  padding: 0.45rem 1rem;
+  border-top: 1px solid #2a2a2a;
+  transform: translateY(0);
+  transition: transform 0.3s var(--ease);
+}
+.pager--hidden {
+  transform: translateY(105%);
+}
+.pager__left {
+  color: var(--term-dim);
+  flex: 0 0 auto;
+}
+.pager__jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.1rem;
+  flex: 1 1 auto;
+}
+.pager__jump button {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--term-ink);
+  background: none;
+  border: 0;
+  padding: 0.1rem 0;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.pager__jump button:hover {
+  color: var(--term-green);
+  border-bottom-color: var(--term-green);
+}
+.pager__pos {
+  color: var(--term-dim);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  body {
+    font-size: 15px;
+  }
+  .paper {
+    padding-top: 1.75rem;
+  }
+  .opt {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+  .opt dd {
+    padding-left: 1.1rem;
+  }
+  .term--install .term__body {
+    grid-template-columns: 1fr;
+  }
+  .copy {
+    justify-self: start;
+  }
+  .pager__jump {
+    display: none;
+  }
+  .pager__pos {
+    margin-left: auto;
+  }
+  .doc-head__rule span:nth-child(2),
+  .doc-foot__rule span:nth-child(2) {
+    display: none;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

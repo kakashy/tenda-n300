@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tenda-n300(1) - control a Tenda N300 router from your terminal</title>
+<meta name="description" content="tenda-n300 - a command-line tool for controlling a Tenda N300 wireless router: list devices, block by MAC, change WiFi settings, reboot, backup, and more. No browser needed.">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+<!-- impeccable-disable em-dash-overuse -- the page is a CLI man page; every "--" is a command-line flag, not an em dash -->
+<!--
+THESIS: This page is tenda-n300(1), a living man page: the visitor is already in a terminal mindset and the install command is the manual's headline section. It refuses the category default of a dark neon "dev tool" hero with a fake terminal window.
+OWN-WORLD: A printed Unix manual on warm paper: IBM Plex Mono throughout, black ink on off-white stock, hairline rules, .SH section heads, hanging-indent option lists; router-LED green and red are the only status color, used for live output and blocked devices, never decoration. Where the manual shows what the tool does, the page becomes a dark terminal block.
+STORY: A homelabber lands and reads the manual of the tool they have been meaning to install; within the first viewport they see what it is (NAME), how to run it (SYNOPSIS), and the one-liner to install it; the command explorer proves it works with real output.
+FIRST VIEWPORT: The man-page header rule tenda-n300(1) over NAME + SYNOPSIS + the INSTALLATION one-liner with a copy action; the live proof (a typing terminal transcript of discover + profile add + devices) is the first thing below the fold.
+FORM: man-page world, candidate 3 of the grounded list, seed key c317321e.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+<main class="paper">
+
+  <header class="doc-head">
+    <div class="doc-head__rule">
+      <span>tenda-n300(1)</span>
+      <span>General Commands Manual</span>
+      <span>tenda-n300(1)</span>
+    </div>
+  </header>
+
+  <a class="skip-link" href="#commands">Skip to the command explorer</a>
+
+  <!-- ===================== NAME ===================== -->
+  <section class="sh" aria-labelledby="s-name">
+    <h2 class="sh__head" id="s-name">NAME</h2>
+    <p class="pp">
+      <b>tenda-n300</b> - control a Tenda N300 wireless router from your terminal. No browser needed.
+    </p>
+  </section>
+
+  <!-- ===================== SYNOPSIS ===================== -->
+  <section class="sh" aria-labelledby="s-synopsis">
+    <h2 class="sh__head" id="s-synopsis">SYNOPSIS</h2>
+    <pre class="synopsis"><b>tenda-n300</b> [<b>--ip</b> <i>addr</i>] [<b>--password</b> <i>pass</i>] [<b>--profile</b> <i>name</i>] [<b>--json</b>] <i>command</i> [<i>args</i>]</pre>
+    <p class="pp">
+      Every router lives in a <i>profile</i>. Add one, run any command against it, and the tool
+      remembers which network you are on and picks the right profile automatically.
+    </p>
+  </section>
+
+  <!-- ===================== INSTALLATION ===================== -->
+  <section class="sh" aria-labelledby="s-install" id="install">
+    <h2 class="sh__head" id="s-install">INSTALLATION</h2>
+    <p class="pp">One line, no Go toolchain required. Downloads the pre-built binary for your OS and installs it to <i>/usr/local/bin</i>.</p>
+    <figure class="term term--install" data-term>
+      <div class="term__bar" aria-hidden="true">
+        <span class="term__led" data-led></span>
+        <span class="term__title">install</span>
+      </div>
+      <div class="term__body">
+        <pre class="term__pre"><code class="term__line"><span class="tp">$</span> curl -fsSL https://raw.githubusercontent.com/kakashy/tenda-n300/main/install.sh | bash</code></pre>
+        <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/kakashy/tenda-n300/main/install.sh | bash">
+          <span class="copy__label" data-copy-label>copy</span>
+        </button>
+      </div>
+    </figure>
+    <dl class="dl">
+      <dt>Build from source</dt>
+      <dd><pre class="code-inline">git clone https://github.com/kakashy/tenda-n300.git &amp;&amp; cd tenda-n300 &amp;&amp; ./build.sh</pre></dd>
+      <dt>Go install</dt>
+      <dd><pre class="code-inline">go install github.com/kakashy/tenda-n300@latest</pre></dd>
+      <dt>Manual build</dt>
+      <dd><pre class="code-inline">go build -ldflags="-s -w" -o tenda-n300 . &amp;&amp; sudo mv tenda-n300 /usr/local/bin/</pre></dd>
+    </dl>
+  </section>
+
+  <!-- ===================== QUICK START ===================== -->
+  <section class="sh" aria-labelledby="s-quick" id="quick">
+    <h2 class="sh__head" id="s-quick">QUICK START</h2>
+    <p class="pp">Three commands from a blank machine to a blocked device:</p>
+    <div class="term" data-term>
+      <div class="term__bar" aria-hidden="true">
+        <span class="term__led term__led--on"></span>
+        <span class="term__title">quick start</span>
+      </div>
+      <div class="term__body">
+        <pre class="term__pre"><code class="term__line"><span class="tp">$</span> tenda-n300 discover
+<span class="tk">found Tenda router at 192.168.0.1 (N300)</span>
+<span class="tk">save as profile? [y/N]:</span> <span class="ti">y</span>
+<span class="tk">profile 'default' saved, password: admin</span>
+<span class="tp">$</span> tenda-n300 profile add home --ip 192.168.0.1 --password admin
+<span class="tk">profile 'home' added and set as default</span>
+<span class="tp">$</span> tenda-n300 devices</code></pre>
+      </div>
+    </div>
+    <p class="pp">The password never touches disk; it goes straight into your OS keyring (macOS Keychain, Linux Secret Service, Windows Credential Manager).</p>
+  </section>
+
+  <!-- ===================== DESCRIPTION ===================== -->
+  <section class="sh" aria-labelledby="s-description" id="description">
+    <h2 class="sh__head" id="s-description">DESCRIPTION</h2>
+    <p class="pp">
+      <b>tenda-n300</b> talks to the router's own web API (<i>goform</i>) the same way the admin page
+      does, but from a shell. Batch it, script it, pipe it, and automate it; the vendor
+      web UI becomes optional.
+    </p>
+    <ul class="bl">
+      <li><b>devices</b>: every connected and blocked device on the network</li>
+      <li><b>block / unblock</b>: cut or restore internet by MAC address</li>
+      <li><b>wifi</b>: view or change SSID, password, channel, encryption</li>
+      <li><b>status</b>: totals: online, offline, blocked</li>
+      <li><b>reboot</b>: restart the router from the terminal</li>
+      <li><b>discover</b>: sweep the LAN for Tenda routers and save them as profiles</li>
+      <li><b>backup / restore</b>: save and reload router configuration</li>
+      <li><b>syslog</b>: export the router's system log</li>
+      <li><b>profile</b>: multiple routers (home, work), switched by flag or by network fingerprint</li>
+      <li><b>--json</b>: machine-readable output for scripts</li>
+    </ul>
+  </section>
+
+  <!-- ===================== OPTIONS ===================== -->
+  <section class="sh" aria-labelledby="s-options" id="options">
+    <h2 class="sh__head" id="s-options">OPTIONS</h2>
+    <dl class="opts">
+      <div class="opt">
+        <dt><b>--ip</b> <i>addr</i></dt>
+        <dd>Router IP address. Overrides config and profiles.</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--password</b> <i>pass</i></dt>
+        <dd>Router admin password. Overrides config and profiles. Use with care on shared shells.</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--profile</b> <i>name</i></dt>
+        <dd>Router profile name. Overrides auto-detection.</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--json</b></dt>
+        <dd>Emit JSON instead of tables. For scripts and pipes.</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--ssid</b> <i>name</i></dt>
+        <dd>New WiFi SSID (with the <b>wifi</b> command).</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--wifi-password</b> <i>pass</i></dt>
+        <dd>New WiFi password (with the <b>wifi</b> command).</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--channel</b> <i>n</i></dt>
+        <dd>New WiFi channel, 1&ndash;11 (with the <b>wifi</b> command).</dd>
+      </div>
+      <div class="opt">
+        <dt><b>--encrypt</b> <i>mode</i></dt>
+        <dd>New encryption mode, e.g. <i>WPA2PSK/AES</i> (with the <b>wifi</b> command).</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- ===================== COMMANDS ===================== -->
+  <section class="sh" aria-labelledby="s-commands" id="commands">
+    <h2 class="sh__head" id="s-commands">COMMANDS</h2>
+    <p class="pp">
+      Click a command to run it. Output below is the tool's real format, shown on sample data.
+    </p>
+
+    <div class="explorer" data-explorer>
+      <nav class="explorer__nav" aria-label="Command explorer">
+        <button class="explorer__cmd" type="button" data-command="status" aria-pressed="true">status</button>
+        <button class="explorer__cmd" type="button" data-command="devices" aria-pressed="false">devices</button>
+        <button class="explorer__cmd" type="button" data-command="block" aria-pressed="false">block</button>
+        <button class="explorer__cmd" type="button" data-command="unblock" aria-pressed="false">unblock</button>
+        <button class="explorer__cmd" type="button" data-command="wifi" aria-pressed="false">wifi</button>
+        <button class="explorer__cmd" type="button" data-command="wifi-set" aria-pressed="false">wifi --set</button>
+        <button class="explorer__cmd" type="button" data-command="reboot" aria-pressed="false">reboot</button>
+        <button class="explorer__cmd" type="button" data-command="json" aria-pressed="false">--json</button>
+        <button class="explorer__cmd" type="button" data-command="discover" aria-pressed="false">discover</button>
+        <button class="explorer__cmd" type="button" data-command="profile" aria-pressed="false">profile</button>
+        <button class="explorer__cmd" type="button" data-command="backup" aria-pressed="false">backup</button>
+        <button class="explorer__cmd" type="button" data-command="syslog" aria-pressed="false">syslog</button>
+      </nav>
+
+      <div class="explorer__stage">
+        <p class="explorer__syn" data-syn aria-live="polite"></p>
+        <div class="term" data-term>
+          <div class="term__bar" aria-hidden="true">
+            <span class="term__led term__led--on"></span>
+            <span class="term__title" data-term-title>status</span>
+          </div>
+          <div class="term__body">
+            <pre class="term__pre" data-term-out></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FILES ===================== -->
+  <section class="sh" aria-labelledby="s-files" id="files">
+    <h2 class="sh__head" id="s-files">FILES</h2>
+    <dl class="dl">
+      <dt><i>~/.config/tenda-n300/config.json</i></dt>
+      <dd>Profiles, default profile, and the network fingerprint cache. Created with 0700 permissions.</dd>
+      <dt>OS keyring, service <i>tenda-n300</i></dt>
+      <dd>Passwords, keyed per profile (<i>password</i> for the default profile, <i>password:&lt;name&gt;</i> for named ones). Never in plaintext on disk.</dd>
+    </dl>
+  </section>
+
+  <!-- ===================== SECURITY ===================== -->
+  <section class="sh" aria-labelledby="s-security" id="security">
+    <h2 class="sh__head" id="s-security">SECURITY</h2>
+    <ul class="bl">
+      <li>Router passwords live in your <b>OS keyring</b>: never in plaintext on disk.</li>
+      <li>All traffic with the router is <b>plain HTTP</b>: no TLS. Use on networks you trust.</li>
+      <li>This tool is <b>not officially supported by Tenda</b>. See <a href="#disclaimer">DISCLAIMER</a>.</li>
+    </ul>
+    <p class="pp">
+      See <a href="https://github.com/kakashy/tenda-n300/blob/main/SECURITY.md">SECURITY.md</a>
+      in the repository for details and a responsible-disclosure path.
+    </p>
+  </section>
+
+  <!-- ===================== DISCLAIMER ===================== -->
+  <section class="sh" aria-labelledby="s-disclaimer" id="disclaimer">
+    <h2 class="sh__head" id="s-disclaimer">DISCLAIMER</h2>
+    <p class="pp">
+      This tool interacts with the router's <b>internal web API</b>. It is not officially
+      supported by Tenda, and Tenda may change or disable the endpoints it relies on at any
+      time. Use it at your own risk: it may break with a firmware update, and any damage to
+      the router, its configuration, or your network is your responsibility.
+    </p>
+    <p class="pp">
+      All communication with the router is over <b>plain HTTP</b>, with no encryption.
+      Never use this tool on a network you do not trust, and be aware that credentials and
+      commands travel unencrypted between the machine running it and the router.
+    </p>
+    <p class="pp">
+      This project is a personal, unofficial tool. It comes with no warranty, express or
+      implied, and the author accepts no liability for any loss or damage arising from its
+      use. This includes, but is not limited to: a router that stops working, a WiFi
+      network that goes down, or a factory reset you did not intend.
+    </p>
+    <p class="pp">
+      <b>Factory reset wipes every router setting.</b> Back up your configuration first with
+      <b>backup</b>, and confirm you are issuing the command against the right profile.
+    </p>
+  </section>
+
+  <!-- ===================== SEE ALSO ===================== -->
+  <section class="sh" aria-labelledby="s-seealso" id="seealso">
+    <h2 class="sh__head" id="s-seealso">SEE ALSO</h2>
+    <dl class="dl">
+      <dt>Repository</dt>
+      <dd><a href="https://github.com/kakashy/tenda-n300">github.com/kakashy/tenda-n300</a></dd>
+      <dt>README</dt>
+      <dd><a href="https://github.com/kakashy/tenda-n300#readme">github.com/kakashy/tenda-n300#readme</a></dd>
+      <dt>Report a bug</dt>
+      <dd><a href="https://github.com/kakashy/tenda-n300/issues">github.com/kakashy/tenda-n300/issues</a></dd>
+      <dt>License</dt>
+      <dd>MIT: <a href="https://github.com/kakashy/tenda-n300/blob/main/LICENSE">LICENSE</a></dd>
+    </dl>
+  </section>
+
+  <footer class="doc-foot">
+    <div class="doc-foot__rule">
+      <span>tenda-n300 v0.6.0</span>
+      <span>August 2026</span>
+      <span>tenda-n300(1)</span>
+    </div>
+  </footer>
+
+</main>
+
+<div class="pager pager--hidden" role="navigation" aria-label="Page sections">
+  <span class="pager__left">tenda-n300(1)</span>
+  <nav class="pager__jump" aria-label="Jump to section">
+    <button type="button" data-jump="install">install</button>
+    <button type="button" data-jump="quick">quick start</button>
+    <button type="button" data-jump="description">description</button>
+    <button type="button" data-jump="options">options</button>
+    <button type="button" data-jump="commands">commands</button>
+    <button type="button" data-jump="files">files</button>
+    <button type="button" data-jump="security">security</button>
+    <button type="button" data-jump="disclaimer">disclaimer</button>
+    <button type="button" data-jump="seealso">see also</button>
+  </nav>
+  <span class="pager__pos" data-pos>0%</span>
+</div>
+
+<script src="./js/main.js"></script>
+</body>
+</html>

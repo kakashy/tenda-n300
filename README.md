@@ -2,6 +2,8 @@
 
 A command-line tool for controlling a **Tenda N300** wireless router from your terminal. No browser needed.
 
+> **Website:** <https://kakashy.github.io/tenda-n300/>
+
 > **Disclaimer:** This tool interacts with the router's internal web API. It is not officially supported by Tenda. Use at your own risk.
 
 ## Features
