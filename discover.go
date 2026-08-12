@@ -25,34 +25,31 @@ func isTendaRouter(ip string) bool {
 }
 
 func defaultGatewayIP() (string, error) {
-	interfaces := []net.IP{}
-	ifaces, err := net.Interfaces()
+	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return "", err
 	}
-	for _, iface := range ifaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
+	for _, addr := range addrs {
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok || ipnet.IP.IsLoopback() || ipnet.IP.To4() == nil {
 			continue
 		}
-		for _, addr := range addrs {
-			ipnet, ok := addr.(*net.IPNet)
-			if !ok || ipnet.IP.IsLoopback() || ipnet.IP.To4() == nil {
-				continue
-			}
-			interfaces = append(interfaces, ipnet.IP)
+		ip4 := ipnet.IP.To4()
+		mask := ipnet.Mask
+		network := ip4.Mask(mask)
+		ones, bits := mask.Size()
+		if ones == bits {
+			return network.String(), nil
 		}
+		gw := make(net.IP, 4)
+		copy(gw, network)
+		gw[3] |= 1
+		return gw.String(), nil
 	}
-	if len(interfaces) == 0 {
-		return "", fmt.Errorf("no network interfaces found")
-	}
-	ip := make(net.IP, 4)
-	copy(ip, interfaces[0].To4())
-	ip[3] = 1
-	return ip.String(), nil
+	return "", fmt.Errorf("no suitable network interface found")
 }
 
-func parseHexIP(hex string) net.IP {
+func parseHexIP_LE(hex string) net.IP {
 	if len(hex) < 8 {
 		return nil
 	}

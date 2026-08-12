@@ -22,7 +22,7 @@ func TestHexToByte(t *testing.T) {
 	}
 }
 
-func TestParseHexIP(t *testing.T) {
+func TestParseHexIP_LE(t *testing.T) {
 	tests := []struct {
 		hex     string
 		want    string
@@ -36,19 +36,19 @@ func TestParseHexIP(t *testing.T) {
 		{"abcd", "", true},
 	}
 	for _, tc := range tests {
-		got := parseHexIP(tc.hex)
+		got := parseHexIP_LE(tc.hex)
 		if tc.wantNil {
 			if got != nil {
-				t.Errorf("parseHexIP(%q) = %v, want nil", tc.hex, got)
+				t.Errorf("parseHexIP_LE(%q) = %v, want nil", tc.hex, got)
 			}
 			continue
 		}
 		if got == nil {
-			t.Errorf("parseHexIP(%q) = nil, want %s", tc.hex, tc.want)
+			t.Errorf("parseHexIP_LE(%q) = nil, want %s", tc.hex, tc.want)
 			continue
 		}
 		if got.String() != tc.want {
-			t.Errorf("parseHexIP(%q) = %s, want %s", tc.hex, got, tc.want)
+			t.Errorf("parseHexIP_LE(%q) = %s, want %s", tc.hex, got, tc.want)
 		}
 	}
 }

@@ -20,7 +20,7 @@ func gatewayFromRoute() (string, error) {
 			continue
 		}
 		if fields[1] == "00000000" {
-			gw := parseHexIP(fields[2])
+			gw := parseHexIP_LE(fields[2])
 			if gw != nil {
 				return gw.String(), nil
 			}
