@@ -91,6 +91,58 @@ func TestValidateChannel(t *testing.T) {
 	}
 }
 
+func TestValidatePort(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantErr bool
+	}{
+		{"1", false},
+		{"22", false},
+		{"65535", false},
+		{" 8080 ", false},
+		{"0", true},
+		{"65536", true},
+		{"-1", true},
+		{"abc", true},
+		{"", true},
+		{"22.5", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			err := ValidatePort(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePort(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateProtocol(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantErr bool
+	}{
+		{"tcp", false},
+		{"udp", false},
+		{"both", false},
+		{"TCP", false},
+		{"Both", false},
+		{"", true},
+		{"icmp", true},
+		{"tcp udp", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			err := ValidateProtocol(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateProtocol(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateIPv4(t *testing.T) {
 	tests := []struct {
 		input   string

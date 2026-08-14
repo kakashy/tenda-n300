@@ -33,6 +33,11 @@ Commands:
   wifi                  Show WiFi settings (SSID, password, channel, encryption)
   wifi --ssid <name> --wifi-password <pass> --channel <n> --encrypt <mode>
                         Change WiFi settings (any combination)
+  portforward [list]    List port forwarding (virtual server) rules
+  portforward add <internal-ip> <internal-port> <external-port> [--protocol tcp|udp|both]
+                        Add a port forwarding rule (protocol defaults to both)
+  portforward remove <index>
+                        Remove a port forwarding rule by index (see list)
 
   reboot                Reboot the router
   reset                 Factory reset router (wipes all config)
@@ -114,7 +119,7 @@ Flags:
 		cmdCompletion(args[1:])
 	case "uninstall":
 		cmdUninstall()
-	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog":
+	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog", "portforward":
 		// Global flags (--json/--profile) may appear after the command word
 		// (e.g. `wifi --json`); extract them before dispatching so every
 		// command honors them uniformly, mirroring cmdProfile.
@@ -371,6 +376,8 @@ Flags:
 					os.Stdout.Write(data)
 				}
 			}
+		case "portforward":
+			cmdPortForward(cmdArgs, ip, password)
 		}
 	default:
 		printError("unknown command: %s", args[0])
@@ -1393,6 +1400,22 @@ func validateCommandArgs(cmd string, args []string) error {
 		if len(args) < 1 {
 			return fmt.Errorf("usage: tenda-n300 restore <file>")
 		}
+	case "portforward":
+		if len(args) > 0 {
+			switch args[0] {
+			case "add":
+				if len(args) < 4 {
+					return fmt.Errorf("usage: tenda-n300 portforward add <internal-ip> <internal-port> <external-port> [--protocol tcp|udp|both]")
+				}
+			case "remove":
+				if len(args) < 2 {
+					return fmt.Errorf("usage: tenda-n300 portforward remove <index>")
+				}
+			case "list", "help":
+			default:
+				return fmt.Errorf("unknown portforward subcommand: %s", args[0])
+			}
+		}
 	}
 	return nil
 }
@@ -1429,6 +1452,7 @@ func printSubcommandHelp(cmd string) {
 		"backup":       "Usage: tenda-n300 backup [file]\n\nDownload config backup. Defaults to RouterCfm.cfg.",
 		"restore":      "Usage: tenda-n300 restore <file>\n\nRestore config from a backup file.",
 		"syslog":       "Usage: tenda-n300 syslog [file]\n\nExport system log. Writes to file if given, otherwise stdout.",
+		"portforward":  "Usage: tenda-n300 portforward [list|add <internal-ip> <internal-port> <external-port> [--protocol tcp|udp|both]|remove <index>]\n\nManage port forwarding (virtual server) rules.",
 		"profile":      "Usage: tenda-n300 profile [list|add <name> [--ip <addr>] [--password <pass>]|set <name> [--ip <addr>] [--password <pass>]|use <name>|remove <name>|rename <old> <new>]\n\nManage router profiles.",
 	}
 	if h, ok := help[cmd]; ok {

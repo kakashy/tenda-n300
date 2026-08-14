@@ -54,6 +54,27 @@ func ValidateChannel(ch string) error {
 	return nil
 }
 
+// ValidatePort checks if the input is a valid TCP/UDP port (1-65535).
+func ValidatePort(p string) error {
+	p = strings.TrimSpace(p)
+	n, err := strconv.Atoi(p)
+	if err != nil || n < 1 || n > 65535 {
+		return fmt.Errorf("invalid port %q (must be 1-65535)", p)
+	}
+	return nil
+}
+
+// ValidateProtocol checks if the input is a supported port forwarding
+// protocol: tcp, udp, or both (the router web UI's own options).
+func ValidateProtocol(p string) error {
+	p = strings.ToLower(strings.TrimSpace(p))
+	switch p {
+	case "tcp", "udp", "both":
+		return nil
+	}
+	return fmt.Errorf("invalid protocol %q (must be tcp, udp, or both)", p)
+}
+
 // ValidateIPv4 checks if the input is a valid IPv4 address.
 func ValidateIPv4(ip string) error {
 	ip = strings.TrimSpace(ip)

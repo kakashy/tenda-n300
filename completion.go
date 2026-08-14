@@ -25,7 +25,7 @@ const bashCompletion = `_tenda_n300() {
     local cur prev words cword
     _init_completion || return
 
-    commands="devices block unblock firmwareinfo wifi status reboot reset backup restore syslog ping discover config profile uninstall completion version"
+    commands="devices block unblock firmwareinfo wifi status reboot reset backup restore syslog portforward ping discover config profile uninstall completion version"
 
     case $prev in
         tenda-n300)
@@ -54,7 +54,10 @@ const bashCompletion = `_tenda_n300() {
             fi
             ;;
         add)
-            # a new profile name: nothing sensible to complete
+            # profile add takes a new name; portforward add takes flags
+            if [[ " ${words[*]} " == *" portforward "* ]]; then
+                COMPREPLY=($(compgen -W "--protocol tcp udp both" -- "$cur"))
+            fi
             ;;
         use|remove|rename)
             COMPREPLY=($(compgen -W "$(tenda-n300 profile list 2>/dev/null)" -- "$cur"))
@@ -62,6 +65,9 @@ const bashCompletion = `_tenda_n300() {
         block|unblock)
             # suggest MAC addresses from devices output (accepts multiple)
             COMPREPLY=()
+            ;;
+        portforward)
+            COMPREPLY=($(compgen -W "list add remove --help" -- "$cur"))
             ;;
         backup|syslog)
             COMPREPLY=($(compgen -f -- "$cur"))
@@ -95,6 +101,7 @@ _tenda_n300() {
         'backup:download config backup'
         'restore:restore config from backup file'
         'syslog:export system log'
+        'portforward:manage port forwarding (virtual server) rules (list, add, remove)'
         'ping:check if router is reachable and responsive'
 		'discover:scan network for Tenda routers'
 		'config:show or set configuration'
@@ -162,6 +169,20 @@ _tenda_n300() {
                     ;;
                 block|unblock)
                     _message 'MAC address (e.g. aa:bb:cc:dd:ee:ff) — accepts multiple'
+                    ;;
+                portforward)
+                    if (( CURRENT == 2 )); then
+                        _values 'subcommand' 'list' 'add' 'remove' '--help'
+                    elif (( CURRENT == 3 )); then
+                        case $words[2] in
+                            add)
+                                _message 'internal-ip internal-port external-port [--protocol tcp|udp|both]'
+                                ;;
+                            remove)
+                                _message 'index (from portforward list)'
+                                ;;
+                        esac
+                    fi
                     ;;
                 completion)
                     _values 'shell' 'bash' 'zsh'

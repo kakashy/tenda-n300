@@ -190,6 +190,35 @@ func printWiFiSettings(s *WiFiSettings) {
 	fmt.Printf("Broadcast:  %s\n", s.Broadcast)
 }
 
+// printPortForwardRules renders port forwarding rules. JSON output includes
+// the 1-based index so scripts can feed it straight back to
+// `portforward remove`.
+func printPortForwardRules(rules []PortForwardRule) {
+	if jsonOutput {
+		out := make([]map[string]string, 0, len(rules))
+		for i, r := range rules {
+			out = append(out, ruleJSON(i+1, r))
+		}
+		printJSON(out)
+		return
+	}
+	if len(rules) == 0 {
+		fmt.Println("no port forwarding rules")
+		return
+	}
+	rows := make([][]string, 0, len(rules))
+	for i, r := range rules {
+		rows = append(rows, []string{
+			fmt.Sprintf("%d", i+1),
+			r.InternalIP,
+			r.InternalPort,
+			r.ExternalPort,
+			r.Protocol,
+		})
+	}
+	printTable([]string{"INDEX", "INTERNAL IP", "INTERNAL PORT", "EXTERNAL PORT", "PROTOCOL"}, rows)
+}
+
 func printPingResult(r *PingResult) {
 	if jsonOutput {
 		printJSON(map[string]any{

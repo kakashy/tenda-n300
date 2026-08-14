@@ -77,6 +77,18 @@
         '<span class="ti">Encryption: WPA2PSK/AES</span>',
       ],
     },
+    portforward: {
+      syn: "List, add, or remove port forwarding (virtual server) rules.",
+      title: "portforward",
+      lines: [
+        '<span class="tp">$</span> tenda-n300 portforward',
+        "INDEX  INTERNAL IP    INTERNAL PORT  EXTERNAL PORT  PROTOCOL",
+        "1      192.168.0.50   25565          25565          tcp",
+        "2      192.168.0.31   8080           8080           both",
+        '<span class="tp">$</span> tenda-n300 portforward add 192.168.0.40 22 2222 --protocol tcp',
+        '<span class="ti">added port forwarding rule: 2222:22 -> 192.168.0.40 (tcp)</span>',
+      ],
+    },
     reboot: {
       syn: "Restart the router remotely.",
       title: "reboot",
