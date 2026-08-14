@@ -573,6 +573,129 @@ func (c *RouterClient) SetWiFiSettings(s *WiFiSettings) error {
 	return nil
 }
 
+// PortForwardRule is a single port forwarding (virtual server) entry. The
+// N300 firmware stores exactly four fields per rule; there is no rule name.
+// Protocol is one of "tcp", "udp", or "both".
+type PortForwardRule struct {
+	InternalIP   string `json:"internal_ip"`
+	InternalPort string `json:"internal_port"`
+	ExternalPort string `json:"external_port"`
+	Protocol     string `json:"protocol"`
+}
+
+// LanConfig is the router's LAN subnet, used to validate that a forwarded
+// internal IP is on the same segment as the router (the web UI refuses
+// off-subnet rules, which would silently never match).
+type LanConfig struct {
+	IP   string `json:"ip"`
+	Mask string `json:"mask"`
+}
+
+// NATInfo bundles everything the port forwarding page needs from one
+// getNAT call: the current rules plus the LAN subnet for validation.
+type NATInfo struct {
+	PortRules []PortForwardRule
+	Lan       *LanConfig
+}
+
+// natResponse mirrors the JSON returned by /goform/getNAT. Only the fields
+// this tool uses are declared; the router returns many more modules.
+type natResponse struct {
+	PortList []natPortListEntry `json:"portList"`
+	LanCfg   *natLanCfgModule   `json:"lanCfg"`
+}
+
+type natPortListEntry struct {
+	IntranetIP   string `json:"portListIntranetIP"`
+	IntranetPort string `json:"portListIntranetPort"`
+	ExtranetPort string `json:"portListExtranetPort"`
+	Protocol     string `json:"portListProtocol"`
+}
+
+type natLanCfgModule struct {
+	LanIP   string `json:"lanIP"`
+	LanMask string `json:"lanMask"`
+}
+
+type setNATResponse struct {
+	ErrCode string `json:"errCode"`
+}
+
+// natModules is the full module list the router's own advanced page requests
+// from getNAT. Requesting the same list guarantees portList and lanCfg are
+// present in the response regardless of firmware variant.
+const natModules = "wifiRelay,staticIPList,portList,macFilter,localhost,onlineList,ddns,dmz,ping,upnp,lanCfg,apIsolation"
+
+// GetNAT fetches the port forwarding rules and LAN configuration in one
+// request, mirroring the router's advanced settings page.
+func (c *RouterClient) GetNAT() (*NATInfo, error) {
+	resp, err := c.get("/goform/getNAT?modules=" + natModules)
+	if err != nil {
+		return nil, fmt.Errorf("getNAT: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read getNAT: %w", err)
+	}
+	var nat natResponse
+	if err := json.Unmarshal(body, &nat); err != nil {
+		return nil, fmt.Errorf("decode getNAT: %w", err)
+	}
+
+	info := &NATInfo{PortRules: make([]PortForwardRule, 0, len(nat.PortList))}
+	for _, e := range nat.PortList {
+		info.PortRules = append(info.PortRules, PortForwardRule{
+			InternalIP:   e.IntranetIP,
+			InternalPort: e.IntranetPort,
+			ExternalPort: e.ExtranetPort,
+			Protocol:     e.Protocol,
+		})
+	}
+	if nat.LanCfg != nil {
+		info.Lan = &LanConfig{IP: nat.LanCfg.LanIP, Mask: nat.LanCfg.LanMask}
+	}
+	return info, nil
+}
+
+// SetPortForwardRules replaces the entire port forwarding list, the same way
+// the router's web UI does: it serializes every rule into the firmware's
+// semicolon-joined, tilde-separated wire format and POSTs it as module2.
+func (c *RouterClient) SetPortForwardRules(rules []PortForwardRule) error {
+	data := url.Values{
+		"module2":  {"portList"},
+		"portList": {encodePortList(rules)},
+	}
+	resp, err := c.post("/goform/setNAT", data)
+	if err != nil {
+		return fmt.Errorf("setNAT: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read setNAT: %w", err)
+	}
+	var res setNATResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		return fmt.Errorf("decode setNAT: %w", err)
+	}
+	if res.ErrCode != "0" {
+		return fmt.Errorf("port forwarding rejected, errCode: %s", res.ErrCode)
+	}
+	return nil
+}
+
+// encodePortList serializes rules into the firmware's wire format:
+// "ip;internalPort;externalPort;protocol" rows joined by "~" (exactly what
+// the router's own getPortListValue() produces).
+func encodePortList(rules []PortForwardRule) string {
+	parts := make([]string, 0, len(rules))
+	for _, r := range rules {
+		parts = append(parts, fmt.Sprintf("%s;%s;%s;%s", r.InternalIP, r.InternalPort, r.ExternalPort, r.Protocol))
+	}
+	return strings.Join(parts, "~")
+}
+
 type PingResult struct {
 	Reachable bool          `json:"reachable"`
 	Latency   time.Duration `json:"latency"`

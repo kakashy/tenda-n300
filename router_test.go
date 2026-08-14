@@ -82,6 +82,22 @@ func newTestServer(t *testing.T, loginOK bool) *httptest.Server {
 					StatusWanMAC:      "aa:bb:cc:dd:ee:ff",
 				},
 			})
+		case "/goform/getNAT":
+			json.NewEncoder(w).Encode(natResponse{
+				PortList: []natPortListEntry{
+					{IntranetIP: "192.168.1.10", IntranetPort: "22", ExtranetPort: "22", Protocol: "both"},
+					{IntranetIP: "192.168.1.12", IntranetPort: "8080", ExtranetPort: "8080", Protocol: "tcp"},
+				},
+				LanCfg: &natLanCfgModule{LanIP: "192.168.1.1", LanMask: "255.255.255.0"},
+			})
+		case "/goform/setNAT":
+			var res setNATResponse
+			if r.PostFormValue("module2") == "portList" && r.PostFormValue("portList") != "" {
+				res.ErrCode = "0"
+			} else {
+				res.ErrCode = "1"
+			}
+			json.NewEncoder(w).Encode(res)
 		case "/cgi-bin/UploadCfg":
 			w.Write([]byte(`{"errCode":0}`))
 		default:

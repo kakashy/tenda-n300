@@ -11,6 +11,7 @@ A command-line tool for controlling a **Tenda N300** wireless router from your t
 - **List devices** — view all connected and blocked devices on the network
 - **Block / unblock** — restrict internet access for any device by MAC address
 - **WiFi settings** — view or change SSID, password, channel, and encryption mode
+- **Port forwarding** — list, add, and remove port forwarding (virtual server) rules
 - **Reboot** — restart the router remotely
 - **Factory reset** — wipe all router settings (with interactive confirmation)
 - **Backup / restore** — save and reload router configuration
@@ -102,6 +103,9 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--profile <name>] [--json] <comman
 | `unblock <mac>`        | Unblock a device by MAC address                                |
 | `wifi`                 | Show current WiFi settings (SSID, password, channel, encryption) |
 | `wifi --ssid <n> --wifi-password <p> --channel <c> --encrypt <e>` | Change WiFi settings (any combination of flags) |
+| `portforward`         | List port forwarding (virtual server) rules            |
+| `portforward add <ip> <in-port> <ext-port> [--protocol tcp\|udp\|both]` | Add a port forwarding rule (protocol defaults to `both`) |
+| `portforward remove <index>` | Remove a port forwarding rule by its 1-based index from `portforward` |
 | `status`               | Show router summary (total / online / blocked)                 |
 | `reboot`               | Reboot the router                                              |
 | `reset`                | Factory reset (wipes all config — requires `yes` confirmation) |
@@ -132,6 +136,7 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--profile <name>] [--json] <comman
 | `--wifi-password <pass>`  | New WiFi password (for `wifi` command)   |
 | `--channel <n>`           | New WiFi channel 1-11 (for `wifi` command) |
 | `--encrypt <mode>`        | New WiFi encryption mode (for `wifi` command) |
+| `--protocol <p>`          | Port forwarding protocol: `tcp`, `udp`, or `both` (for `portforward add`, default `both`) |
 
 ### Examples
 
@@ -153,6 +158,15 @@ tenda-n300 wifi --ssid "MyNetwork" --wifi-password "newpass123"
 
 # Change WiFi channel to 11 with WPA2 encryption
 tenda-n300 wifi --channel 11 --encrypt "WPA2PSK/AES"
+
+# List port forwarding rules
+tenda-n300 portforward
+
+# Open port 25565 (Minecraft) to a game server on 192.168.0.50
+tenda-n300 portforward add 192.168.0.50 25565 25565 --protocol tcp
+
+# Remove the first rule in the list
+tenda-n300 portforward remove 1
 ```
 
 ### Multiple routers (work/home)
@@ -188,6 +202,7 @@ The tool communicates with the Tenda N300's proprietary goform API over HTTP:
 
 - **Authentication:** MD5 challenge-response (`MD5(base64(password) + token)`)
 - **Device management:** QoS goform endpoints (`getQos`, `setQos`)
+- **Port forwarding:** NAT goform endpoints (`getNAT`, `setNAT`, `portList` module)
 - **System actions:** `sysReboot`, `sysRestore`
 - **Config / logs:** CGI endpoints (`DownloadCfg`, `UploadCfg`, `DownloadSyslog`)
 

@@ -109,6 +109,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <li><b>devices</b>: every connected and blocked device on the network</li>
       <li><b>block / unblock</b>: cut or restore internet by MAC address</li>
       <li><b>wifi</b>: view or change SSID, password, channel, encryption</li>
+      <li><b>portforward</b>: list, add, or remove port forwarding (virtual server) rules</li>
       <li><b>status</b>: totals: online, offline, blocked</li>
       <li><b>reboot</b>: restart the router from the terminal</li>
       <li><b>discover</b>: sweep the LAN for Tenda routers and save them as profiles</li>
@@ -155,6 +156,10 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <dt><b>--encrypt</b> <i>mode</i></dt>
         <dd>New encryption mode, e.g. <i>WPA2PSK/AES</i> (with the <b>wifi</b> command).</dd>
       </div>
+      <div class="opt">
+        <dt><b>--protocol</b> <i>tcp|udp|both</i></dt>
+        <dd>Port forwarding protocol (with the <b>portforward add</b> command). Defaults to <i>both</i>.</dd>
+      </div>
     </dl>
   </section>
 
@@ -173,6 +178,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <button class="explorer__cmd" type="button" data-command="unblock" aria-pressed="false">unblock</button>
         <button class="explorer__cmd" type="button" data-command="wifi" aria-pressed="false">wifi</button>
         <button class="explorer__cmd" type="button" data-command="wifi-set" aria-pressed="false">wifi --set</button>
+        <button class="explorer__cmd" type="button" data-command="portforward" aria-pressed="false">portforward</button>
         <button class="explorer__cmd" type="button" data-command="reboot" aria-pressed="false">reboot</button>
         <button class="explorer__cmd" type="button" data-command="json" aria-pressed="false">--json</button>
         <button class="explorer__cmd" type="button" data-command="discover" aria-pressed="false">discover</button>
