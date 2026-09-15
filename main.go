@@ -119,7 +119,7 @@ Flags:
 		cmdCompletion(args[1:])
 	case "uninstall":
 		cmdUninstall()
-	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "reset", "backup", "restore", "syslog", "portforward":
+	case "devices", "status", "firmwareinfo", "wifi", "block", "unblock", "reboot", "restart", "reset", "backup", "restore", "syslog", "portforward":
 		// Global flags (--json/--profile) may appear after the command word
 		// (e.g. `wifi --json`); extract them before dispatching so every
 		// command honors them uniformly, mirroring cmdProfile.
@@ -279,7 +279,7 @@ Flags:
 				os.Exit(1)
 			}
 
-		case "reboot":
+		case "reboot", "restart":
 			if err := client.Reboot(); err != nil {
 				printError("%v", err)
 				os.Exit(1)
@@ -1447,7 +1447,7 @@ func printSubcommandHelp(cmd string) {
 		"firmwareinfo": "Usage: tenda-n300 firmwareinfo\n\nShow router firmware information.",
 		"wifi":         "Usage: tenda-n300 wifi [--ssid <name>] [--wifi-password <pass>] [--channel <n>] [--encrypt <mode>]\n\nShow WiFi settings. Pass flags to change settings (any combination).",
 		"status":       "Usage: tenda-n300 status\n\nShow router summary with connected devices.",
-		"reboot":       "Usage: tenda-n300 reboot\n\nReboot the router.",
+		"reboot":       "Usage: tenda-n300 reboot [--json|--profile] \n\nReboot the router.\n\nAlias: restart",
 		"reset":        "Usage: tenda-n300 reset\n\nFactory reset router (wipes all config). Prompts for confirmation.",
 		"backup":       "Usage: tenda-n300 backup [file]\n\nDownload config backup. Defaults to RouterCfm.cfg.",
 		"restore":      "Usage: tenda-n300 restore <file>\n\nRestore config from a backup file.",

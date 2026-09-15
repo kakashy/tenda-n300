@@ -107,7 +107,7 @@ tenda-n300 [--ip <addr>] [--password <pass>] [--profile <name>] [--json] <comman
 | `portforward add <ip> <in-port> <ext-port> [--protocol tcp\|udp\|both]` | Add a port forwarding rule (protocol defaults to `both`) |
 | `portforward remove <index>` | Remove a port forwarding rule by its 1-based index from `portforward` |
 | `status`               | Show router summary (total / online / blocked)                 |
-| `reboot`               | Reboot the router                                              |
+| `reboot` / `restart`   | Reboot the router                                              |
 | `reset`                | Factory reset (wipes all config — requires `yes` confirmation) |
 | `backup [file]`        | Download config backup (defaults to `RouterCfm.cfg`)           |
 | `restore <file>`       | Restore config from a backup file                              |

@@ -105,6 +105,7 @@ func TestValidateCommandArgs(t *testing.T) {
 		{"portforward", []string{"remove"}, true},
 		{"portforward", []string{"bogus"}, true},
 		{"devices", nil, false},
+		{"restart", nil, false},
 		{"status", []string{"extra"}, false},
 	}
 	for _, tc := range tests {
